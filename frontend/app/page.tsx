@@ -1,21 +1,12 @@
 "use client";
 import { useEffect } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import { Wallet } from "@coinbase/onchainkit/wallet";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-// import { useQuickAuth } from "@coinbase/onchainkit/minikit";
+import { Navigation } from "./components/Navigation";
 import styles from "./page.module.css";
 
 export default function Home() {
-  // If you need to verify the user's identity, you can use the useQuickAuth hook.
-  // This hook will verify the user's signature and return the user's FID. You can update
-  // this to meet your needs. See the /app/api/auth/route.ts file for more details.
-  // Note: If you don't need to verify the user's identity, you can get their FID and other user data
-  // via `useMiniKit().context?.user`.
-  // const { data, isLoading, error } = useQuickAuth<{
-  //   userFid: string;
-  // }>("/api/auth");
-
   const { setMiniAppReady, isMiniAppReady } = useMiniKit();
 
   useEffect(() => {
@@ -27,55 +18,61 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <header className={styles.headerWrapper}>
+        <Navigation />
         <Wallet />
       </header>
 
       <div className={styles.content}>
-        <Image
-          priority
-          src="/sphere.svg"
-          alt="Sphere"
-          width={200}
-          height={200}
-        />
-        <h1 className={styles.title}>MiniKit</h1>
+        <div className={styles.hero}>
+          <h1 className={styles.title}>Base Trading Platform</h1>
+          <p className={styles.subtitle}>
+            Discover and trade new tokens instantly with real-time scanning and MEV protection
+          </p>
 
-        <p>
-          Get started by editing <code>app/page.tsx</code>
-        </p>
+          <div className={styles.features}>
+            <div className={styles.feature}>
+              <div className={styles.featureIcon}>🔍</div>
+              <h3>Token Scanner</h3>
+              <p>Real-time detection of new token launches on Base</p>
+              <Link href="/dashboard" className={styles.featureBtn}>
+                Open Scanner
+              </Link>
+            </div>
 
-        <h2 className={styles.componentsTitle}>Explore Components</h2>
+            <div className={styles.feature}>
+              <div className={styles.featureIcon}>💱</div>
+              <h3>Smart Trading</h3>
+              <p>Best prices across Uniswap V3 and Aerodrome DEXs</p>
+              <Link href="/trade" className={styles.featureBtn}>
+                Start Trading
+              </Link>
+            </div>
 
-        <ul className={styles.components}>
-          {[
-            {
-              name: "Transaction",
-              url: "https://docs.base.org/onchainkit/transaction/transaction",
-            },
-            {
-              name: "Swap",
-              url: "https://docs.base.org/onchainkit/swap/swap",
-            },
-            {
-              name: "Checkout",
-              url: "https://docs.base.org/onchainkit/checkout/checkout",
-            },
-            {
-              name: "Wallet",
-              url: "https://docs.base.org/onchainkit/wallet/wallet",
-            },
-            {
-              name: "Identity",
-              url: "https://docs.base.org/onchainkit/identity/identity",
-            },
-          ].map((component) => (
-            <li key={component.name}>
-              <a target="_blank" rel="noreferrer" href={component.url}>
-                {component.name}
-              </a>
-            </li>
-          ))}
-        </ul>
+            <div className={styles.feature}>
+              <div className={styles.featureIcon}>🛡️</div>
+              <h3>MEV Protection</h3>
+              <p>Simulate transactions before execution to prevent frontrunning</p>
+              <Link href="/trade" className={styles.featureBtn}>
+                Learn More
+              </Link>
+            </div>
+          </div>
+
+          <div className={styles.stats}>
+            <div className={styles.stat}>
+              <div className={styles.statValue}>2+</div>
+              <div className={styles.statLabel}>DEX Integrations</div>
+            </div>
+            <div className={styles.stat}>
+              <div className={styles.statValue}>Base</div>
+              <div className={styles.statLabel}>Network</div>
+            </div>
+            <div className={styles.stat}>
+              <div className={styles.statValue}>0%</div>
+              <div className={styles.statLabel}>Platform Fees</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
