@@ -1,7 +1,6 @@
 "use client";
 import { useEffect } from "react";
 import Link from "next/link";
-import { Wallet } from "@coinbase/onchainkit/wallet";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { Navigation } from "./components/Navigation";
 import styles from "./page.module.css";
@@ -17,10 +16,7 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.headerWrapper}>
-        <Navigation />
-        <Wallet />
-      </header>
+      <Navigation />
 
       <div className={styles.content}>
         <div className={styles.hero}>

@@ -3,22 +3,10 @@
   background: linear-gradient(to bottom, #000000, #0a0a0a);
 }
 
-.header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 20px 40px;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.headerContent {
+.pageHeader {
   max-width: 1400px;
   margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 40px 40px 20px 40px;
 }
 
 .title {
@@ -32,7 +20,7 @@
 }
 
 .subtitle {
-  margin: 4px 0 0 0;
+  margin: 8px 0 0 0;
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.95rem;
 }
@@ -40,7 +28,25 @@
 .content {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 40px;
+  padding: 20px 40px 40px 40px;
+}
+
+@media (max-width: 768px) {
+  .pageHeader {
+    padding: 24px 20px 16px 20px;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+  }
+
+  .content {
+    padding: 16px 20px 32px 20px;
+  }
 }
 
 .infoBox {

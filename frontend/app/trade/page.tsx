@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { SwapWidget } from '../components/SwapWidget';
 import { BuyWidget } from '../components/BuyWidget';
+import { SwapWidget } from '../components/SwapWidget';
 import { DiagnosticCheck } from '../components/DiagnosticCheck';
-import { Wallet } from '@coinbase/onchainkit/wallet';
+import { Navigation } from '../components/Navigation';
 import styles from './page.module.css';
 
 export default function Trade() {
@@ -12,25 +12,22 @@ export default function Trade() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Trade</h1>
-            <p className={styles.subtitle}>
-              {activeTab === 'swap' 
-                ? 'Swap tokens with best prices across DEXs'
-                : 'Buy crypto with credit card, Apple Pay, or Coinbase'
-              }
-            </p>
-          </div>
-          <Wallet />
-        </div>
-      </header>
+      <Navigation />
+
+      <div className={styles.pageHeader}>
+        <h1 className={styles.title}>Trade</h1>
+        <p className={styles.subtitle}>
+          {activeTab === 'swap'
+            ? 'Swap tokens with best prices across DEXs'
+            : 'Buy crypto with credit card, Apple Pay, or Coinbase'
+          }
+        </p>
+      </div>
 
       <div className={styles.content}>
         {/* Diagnostic Check */}
         <DiagnosticCheck />
-        
+
         {/* Tab Switcher */}
         <div className={styles.tabContainer}>
           <button
@@ -50,7 +47,11 @@ export default function Trade() {
         </div>
 
         <div className={styles.widgetContainer}>
-          {activeTab === 'swap' ? <SwapWidget /> : <BuyWidget />}
+          {activeTab === 'swap' ? (
+            <SwapWidget />
+          ) : (
+            <BuyWidget />
+          )}
         </div>
 
         <div className={styles.info}>

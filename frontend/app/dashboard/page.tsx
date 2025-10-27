@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTrendingTokens } from '../hooks/useTokens';
 import { usePoolWatcher } from '../hooks/usePools';
 import { TokenTable } from '../components/TokenTable';
-import { Wallet } from '@coinbase/onchainkit/wallet';
+import { Navigation } from '../components/Navigation';
 import styles from './page.module.css';
 
 export default function Dashboard() {
@@ -14,17 +14,14 @@ export default function Dashboard() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Token Scanner</h1>
-            <p className={styles.subtitle}>
-              Real-time token discovery on Base chain
-            </p>
-          </div>
-          <Wallet />
-        </div>
-      </header>
+      <Navigation />
+
+      <div className={styles.pageHeader}>
+        <h1 className={styles.title}>Token Scanner</h1>
+        <p className={styles.subtitle}>
+          Real-time token discovery on Base chain
+        </p>
+      </div>
 
       <div className={styles.content}>
         <div className={styles.infoBox}>
