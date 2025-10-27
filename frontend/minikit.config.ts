@@ -9,31 +9,32 @@ const ROOT_URL =
  * @see {@link https://docs.base.org/mini-apps/features/manifest}
  */
 export const minikitConfig = {
-  accountAssociation: {
-    header: "",
-    payload: "",
-    signature: "",
+
+  "accountAssociation": {
+    "header": "eyJmaWQiOjEzOTkxOTAsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg2RWUwMzExYWNFNDQwYjNDYzAwMzA3MWJDY0VmMmI0ZTZDQzM2MjIzIn0",
+    "payload": "eyJkb21haW4iOiJiYXNlbWluaWFwcC1udS52ZXJjZWwuYXBwIn0",
+    "signature": "Vo0t91UjHnPtHVHqEF9xE5XVbeyitIZwvLSSgStzvOA3mVRqLFfJTWqZ0eFKdUEUcDZaBzWmLXiO0FvJkBBfkBs="
   },
-  baseBuilder: {
-    allowedAddresses: [],
+  "baseBuilder": {
+    "allowedAddresses": [],
   },
-  miniapp: {
-    version: "1",
-    name: "frontend",
-    subtitle: "",
-    description: "",
-    screenshotUrls: [],
-    iconUrl: `${ROOT_URL}/icon.png`,
-    splashImageUrl: `${ROOT_URL}/splash.png`,
-    splashBackgroundColor: "#000000",
-    homeUrl: ROOT_URL,
-    webhookUrl: `${ROOT_URL}/api/webhook`,
-    primaryCategory: "utility",
-    tags: ["example"],
-    heroImageUrl: `${ROOT_URL}/hero.png`,
-    tagline: "",
-    ogTitle: "",
-    ogDescription: "",
-    ogImageUrl: `${ROOT_URL}/hero.png`,
+  "miniapp": {
+    "version": "1",
+    "name": "BaseScout",
+    "subtitle": "",
+    "description": "Simple mobile tool for discovering, swapping and buying tokens on Base",
+    "screenshotUrls": [],
+    "iconUrl": `${ROOT_URL}/icon.png`,
+    "splashImageUrl": `${ROOT_URL}/splash.png`,
+    "splashBackgroundColor": "#000000",
+    "homeUrl": ROOT_URL,
+    "webhookUrl": `${ROOT_URL}/api/webhook`,
+    "primaryCategory": "utility",
+    "tags": ["example"],
+    "heroImageUrl": `${ROOT_URL}/hero.png`,
+    "tagline": "",
+    "ogTitle": "",
+    "ogDescription": "",
+    "ogImageUrl": `${ROOT_URL}/hero.png`,
   },
 } as const;
