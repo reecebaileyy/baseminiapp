@@ -1,5 +1,5 @@
 import { alchemyRPC } from '../config/client';
-import { Token } from '../types';
+import type { Token } from '../types';
 import { getTokenInfo, getTokenMetadata } from './token';
 
 /**

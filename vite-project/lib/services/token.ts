@@ -1,6 +1,6 @@
 import { publicClient, alchemyRPC } from '../config/client';
 import { ERC20_ABI } from '../constants/abis';
-import { Token } from '../types';
+import type { Token } from '../types';
 import { formatUnits } from 'viem';
 
 /**

@@ -1,7 +1,7 @@
 import { publicClient } from '../../config/client';
 import { AERODROME_ADDRESSES } from '../../constants/contracts';
 import { AERODROME_ROUTER_ABI } from '../../constants/abis';
-import { SwapQuote, Token } from '../../types';
+import type { SwapQuote, Token } from '../../types';
 import { parseUnits, formatUnits, encodeFunctionData } from 'viem';
 
 /**

@@ -1,7 +1,7 @@
 import { watchPoolCreation, getPoolLiquidity, getTokenPools } from './dex/uniswap-v3';
 import { getTokenInfo, getTokenHolderCount, getTokenTotalSupply } from './token';
 import { publicClient } from '../config/client';
-import { LiquidityPool, TokenWithMetrics } from '../types';
+import type { LiquidityPool, TokenWithMetrics } from '../types';
 import { formatUnits } from 'viem';
 
 /**

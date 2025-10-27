@@ -3,7 +3,7 @@ import {
   getBestAerodromeQuote,
   buildAerodromeSwapData,
 } from '../services/dex/aerodrome';
-import { SwapQuote, Token } from '../types';
+import type { SwapQuote, Token } from '../types';
 import { UNISWAP_V3_ADDRESSES, AERODROME_ADDRESSES } from '../constants/contracts';
 
 /**
@@ -128,8 +128,8 @@ export const tradingApi = {
    * Simulate swap transaction
    */
   simulateSwap: async (
-    quote: SwapQuote,
-    recipient: string,
+    _quote: SwapQuote,
+    _recipient: string,
     _slippage: number = 0.5
   ): Promise<{ success: boolean; error?: string }> => {
     try {

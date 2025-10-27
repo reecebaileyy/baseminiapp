@@ -9,7 +9,7 @@ import {
   UNISWAP_V3_QUOTER_ABI,
   UNISWAP_V3_ROUTER_ABI,
 } from '../../constants/abis';
-import { SwapQuote, Token } from '../../types';
+import type { SwapQuote, Token } from '../../types';
 import { parseUnits, formatUnits, encodeFunctionData } from 'viem';
 
 /**

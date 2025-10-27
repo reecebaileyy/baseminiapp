@@ -1,18 +1,25 @@
 import { createPublicClient, createWalletClient, custom, http } from 'viem';
 import { base } from 'viem/chains';
 
+// Extend Window interface for ethereum
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 // Validate environment variables
-if (!process.env.NEXT_PUBLIC_ALCHEMY_API_KEY) {
-  console.error('❌ NEXT_PUBLIC_ALCHEMY_API_KEY is not set in .env.local');
-  console.error('Please create a .env.local file with your Alchemy API key');
+if (!import.meta.env.VITE_ALCHEMY_API_KEY) {
+  console.error('❌ VITE_ALCHEMY_API_KEY is not set in .env');
+  console.error('Please create a .env file with your Alchemy API key');
 }
 
 // Public client for reading blockchain data
 export const publicClient = createPublicClient({
   chain: base,
   transport: http(
-    process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
-      ? `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
+    import.meta.env.VITE_ALCHEMY_API_KEY
+      ? `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`
       : 'https://mainnet.base.org' // Fallback to public RPC (rate limited)
   ),
 });
@@ -31,7 +38,7 @@ export function getWalletClient() {
 
 // Alchemy API helpers
 export const alchemyFetch = async (endpoint: string, options?: RequestInit) => {
-  const baseUrl = `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`;
+  const baseUrl = `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`;
   
   const response = await fetch(`${baseUrl}${endpoint}`, {
     headers: {
@@ -51,7 +58,7 @@ export const alchemyFetch = async (endpoint: string, options?: RequestInit) => {
 // JSON-RPC helper for Alchemy
 export const alchemyRPC = async (method: string, params: unknown[] = []) => {
   const response = await fetch(
-    `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
+    `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`,
     {
       method: 'POST',
       headers: {

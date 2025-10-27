@@ -7,7 +7,7 @@ import {
   getTokenBalances,
 } from '../services/token';
 import { analyzeToken, getTrendingTokens, detectHoneypot } from '../services/scanner';
-import { Token, TokenWithMetrics } from '../types';
+import type { Token, TokenWithMetrics } from '../types';
 
 /**
  * Tokens API - All token-related functions in one place

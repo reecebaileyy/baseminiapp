@@ -4,7 +4,7 @@ import {
   getTokenPools,
 } from '../services/dex/uniswap-v3';
 import { getRecentPools, startPoolScanner } from '../services/scanner';
-import { LiquidityPool } from '../types';
+import type { LiquidityPool } from '../types';
 
 /**
  * Pools API - Liquidity pool operations
