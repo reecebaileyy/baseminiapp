@@ -10,6 +10,7 @@ import { base } from 'wagmi/chains';
 createRoot(document.getElementById('root')!).render(
   <OnchainKitProvider
       apiKey = {import.meta.env.VITE_ONCHAINKIT_API_KEY}
+      projectId = {import.meta.env.VITE_ONCHAINKIT_PROJECT_ID}
       chain={base}
       config={{
         appearance: {

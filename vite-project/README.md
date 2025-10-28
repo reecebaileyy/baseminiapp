@@ -11,7 +11,30 @@ Create a `.env` file in the project root with the following:
 # Get your free API key from: https://www.alchemy.com/
 # Make sure to create an app on the Base network
 VITE_ALCHEMY_API_KEY=your-alchemy-api-key-here
+
+# Coinbase Developer Platform API Keys (for Buy/Sell functionality)
+# Get your API keys from: https://portal.cdp.coinbase.com/
+COINBASE_API_KEY_ID=your-coinbase-api-key-id
+COINBASE_API_KEY_SECRET=your-coinbase-api-key-secret
 ```
+
+### Getting Your Coinbase Developer Platform API Keys
+
+For the Buy component to work (fiat onramp), you need to set up API keys from Coinbase Developer Platform:
+
+1. Visit [Coinbase Developer Platform](https://portal.cdp.coinbase.com/)
+2. Create a new project or select an existing one
+3. Go to **API Keys** section
+4. Click **Create API key** under "Secret API Keys"
+5. Configure your key settings (you can set an IP allowlist for security)
+6. Copy the **API Key ID** and **API Key Secret**
+7. Add them to your `.env` file (for local development)
+
+**Important for Vercel Deployment:**
+- These environment variables must also be set in your Vercel project settings
+- Go to your Vercel project → Settings → Environment Variables
+- Add `COINBASE_API_KEY_ID` and `COINBASE_API_KEY_SECRET` as environment variables
+- These are **server-side only** variables and will be used by the `/api/create-session` serverless function
 
 ## Getting Your Alchemy API Key
 
@@ -93,15 +116,61 @@ If you're getting `"Origin localhost is not on whitelist"` error:
 npm install
 ```
 
-### Run Development Server
+### Running the Development Server
+
+**Option 1: Using Vite directly (frontend only, API won't work)**
 ```bash
 npm run dev
 ```
+Note: The Buy widget session token generation won't work in this mode since the serverless function isn't running.
+
+**Option 2: Using Vercel CLI (recommended for full functionality)**
+```bash
+# Install Vercel CLI globally if you haven't already
+npm install -g vercel
+
+# Run the dev server with Vercel (this includes serverless functions)
+vercel dev
+```
+
+This will:
+- Start the Vite dev server
+- Make the `/api/create-session` serverless function available
+- Allow the Buy widget to work properly
 
 ### Build for Production
 ```bash
 npm run build
 ```
+
+### Deploy to Vercel
+```bash
+# Deploy to production
+vercel --prod
+
+# Or push to your connected Git repository - Vercel will auto-deploy
+```
+
+**Important:** After deploying to Vercel, make sure to set the `COINBASE_API_KEY_ID` and `COINBASE_API_KEY_SECRET` environment variables in your Vercel project settings for the Buy widget to work.
+
+## Troubleshooting
+
+### Buy Widget Issues
+
+**Error: "Failed to generate session token"**
+- Verify your `COINBASE_API_KEY_ID` and `COINBASE_API_KEY_SECRET` are set correctly in Vercel environment variables
+- Check that your API keys are active on the Coinbase Developer Platform
+- Ensure your API keys have the necessary permissions for Buy/Sell functionality
+
+**Error: "JWT signing failed"**
+- The `COINBASE_API_KEY_SECRET` must be in PEM format
+- Make sure there are no extra spaces or newlines when copying the secret
+- The secret should start with `-----BEGIN` and end with `-----END`
+
+**Buy widget not showing:**
+- Ensure you're connected to a wallet
+- Check the browser console for any error messages
+- Verify the `/api/create-session` endpoint is accessible (try running `vercel dev` for local testing)
 
 ---
 
