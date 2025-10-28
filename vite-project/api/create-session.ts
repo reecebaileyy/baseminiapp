@@ -2,6 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { SignJWT } from 'jose';
 import crypto from 'crypto';
 
+const ALLOWED_ORIGINS = [
+    'https://basescout.vercel.app',
+    'http://localhost:3000',
+];
 
 interface CreateSessionRequest {
     addresses: Array<{
@@ -16,6 +20,19 @@ export default async function handler(
     req: VercelRequest,
     res: VercelResponse
 ) {
+    console.log('🔹 create-session invoked');
+    const origin = req.headers.origin || '';
+    if (ALLOWED_ORIGINS.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     // Only allow POST requests
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -78,7 +95,7 @@ export default async function handler(
             // Create JWT payload for Bearer Token
             const now = Math.floor(Date.now() / 1000);
             const uri = `POST api.developer.coinbase.com/onramp/v1/token`;
-            
+
             const payload = {
                 iss: 'cdp',
                 sub: API_KEY_ID,
