@@ -117,11 +117,14 @@ export async function getTokenTotalSupply(tokenAddress: string): Promise<string>
 
 /**
  * Get token metadata including logo
+ * Note: This would normally use Alchemy's Enhanced APIs which require Growth plan
+ * For now, returns null - metadata should be provided from other sources
  */
 export async function getTokenMetadata(tokenAddress: string) {
   try {
-    const result = await alchemyRPC('alchemy_getTokenMetadata', [tokenAddress]);
-    return result;
+    // Alchemy's token metadata API requires Growth plan on Base chain
+    // Returning null for free tier - tokens should provide their own metadata
+    return null;
   } catch (error) {
     console.error('Error fetching token metadata:', error);
     return null;

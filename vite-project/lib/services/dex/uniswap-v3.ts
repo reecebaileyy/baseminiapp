@@ -168,34 +168,18 @@ export function buildUniswapV3SwapData(
 
 /**
  * Listen for new pool creation events
+ * DISABLED: Event watching requires filter APIs that cause 400 errors
+ * Per Alchemy Base API docs: Standard JSON-RPC works, but filter-based watching
+ * requires WebSocket or special filter support that's not available on free tier
  */
 export function watchPoolCreation(
   callback: (token0: string, token1: string, fee: number, pool: string) => void
 ): () => void {
-  try {
-    const unwatch = publicClient.watchContractEvent({
-      address: UNISWAP_V3_ADDRESSES.FACTORY,
-      abi: UNISWAP_V3_FACTORY_ABI,
-      eventName: 'PoolCreated',
-      onLogs: (logs) => {
-        logs.forEach((log) => {
-          const { token0, token1, fee, pool } = log.args;
-          if (token0 && token1 && fee !== undefined && pool) {
-            callback(token0, token1, fee, pool);
-          }
-        });
-      },
-      onError: (error) => {
-        console.debug('Pool watcher error:', error);
-      },
-    });
-
-    return unwatch;
-  } catch (error) {
-    console.debug('Failed to start pool watcher:', error);
-    // Return a no-op unwatch function
-    return () => {};
-  }
+  // Disabled to avoid 400 errors from filter-based polling
+  // This would require WebSocket or special Alchemy filter APIs
+  // Per Alchemy docs: Use HTTP for standard JSON-RPC, not filter-based watching
+  console.debug('Pool watching disabled - use HTTP polling instead of WebSocket filters');
+  return () => {}; // Return no-op unwatch function
 }
 
 /**

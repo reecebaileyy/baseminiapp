@@ -3,6 +3,7 @@ import { useTokenDetails, useHoneypotCheck } from '../../hooks/useTokens';
 import { useTokenPools } from '../../hooks/usePools';
 import { Wallet } from '@coinbase/onchainkit/wallet';
 import { Navigation } from '../../components/Navigation';
+import { InlineSwapWidget } from '../../components/InlineSwapWidget';
 import styles from './page.module.css';
 
 export default function TokenDetails() {
@@ -82,7 +83,7 @@ export default function TokenDetails() {
             </ul>
           </div>
         )}
-
+        
         <div className={styles.stats}>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Price</div>
@@ -141,10 +142,10 @@ export default function TokenDetails() {
           )}
         </div>
 
+        {/* Inline Swap Widget */}
+        <InlineSwapWidget targetToken={token} />
+
         <div className={styles.actions}>
-          <Link to={`/trade?token=${address}`} className={styles.tradeBtn}>
-            Trade This Token
-          </Link>
           <a
             href={`https://basescan.org/token/${address}`}
             target="_blank"
@@ -153,7 +154,12 @@ export default function TokenDetails() {
           >
             View on BaseScan
           </a>
+          <Link to={`/trade?token=${address}`} className={styles.tradeBtn}>
+            View Full Trade Page
+          </Link>
         </div>
+
+        
       </div>
     </div>
   );

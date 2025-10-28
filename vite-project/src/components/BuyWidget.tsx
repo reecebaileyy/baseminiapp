@@ -22,25 +22,14 @@ export function BuyWidget() {
           console.error('Buy error details:', error);
           console.error('Error object keys:', Object.keys(error || {}));
           console.error('Error stringified:', JSON.stringify(error, null, 2));
-          
-          // Check for 401 authentication error
-          if (error?.message?.includes('401') || error?.code === 'UNAUTHORIZED') {
-            console.error('❌ AUTHENTICATION ERROR: Your OnchainKit API Key is invalid or expired.');
-            console.error('Please verify your API key at: https://portal.cdp.coinbase.com/');
-          }
         }}
         onStatus={(status) => {
           console.log('Buy status:', status);
-          console.log("project id:", import.meta.env.ONCHAINKIT_PROJECT_ID);
-          // Log if missing required field
-          if (status.statusData && 'isMissingRequiredField' in status.statusData) {
-            console.log('Missing required field:', status.statusData.isMissingRequiredField);
-            console.log('Full status data:', status.statusData);
-          }
         }}
         onSuccess={(receipt) => {
           console.log('Buy success:', receipt);
         }}
+        
       />
     </div>
   );

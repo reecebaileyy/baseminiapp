@@ -8,20 +8,43 @@ declare global {
   }
 }
 
-// Validate environment variables
-if (!import.meta.env.VITE_ALCHEMY_API_KEY) {
-  console.error('❌ VITE_ALCHEMY_API_KEY is not set in .env');
-  console.error('Please create a .env file with your Alchemy API key');
+// Validate environment variables - Alchemy API key is optional
+const hasAlchemyKey = import.meta.env.VITE_ALCHEMY_API_KEY && import.meta.env.VITE_ALCHEMY_API_KEY !== '';
+
+// Use Alchemy API with proper setup
+// According to Alchemy docs: 
+// 1. Use HTTPS for standard JSON-RPC requests (eth_call, eth_getBalance, etc.)
+// 2. WebSockets are ONLY for subscriptions (eth_subscribe) - not for standard reads
+// 3. Filter-based watching (viem's watchContractEvent) should be avoided
+const useAlchemy = true; // Now enabled after fixing event watching
+
+const rpcUrl = (hasAlchemyKey && useAlchemy)
+  ? `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`
+  : 'https://base.drpc.org'; // Public Base RPC (no restrictions)
+
+console.log((hasAlchemyKey && useAlchemy)
+  ? 'Using Alchemy API' 
+  : hasAlchemyKey 
+    ? 'ℹ️  Using public RPC (Alchemy key available but not enabled)' 
+    : 'ℹ️  Using public Base RPC (add VITE_ALCHEMY_API_KEY to .env)');
+
+if (hasAlchemyKey && useAlchemy) {
+  console.log('Using HTTPS ');
 }
 
-// Public client for reading blockchain data
 export const publicClient = createPublicClient({
   chain: base,
-  transport: http(
-    import.meta.env.VITE_ALCHEMY_API_KEY
-      ? `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`
-      : 'https://mainnet.base.org' // Fallback to public RPC (rate limited)
-  ),
+  transport: http(rpcUrl, {
+    fetchOptions: {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    },
+    timeout: 20000, // 20 seconds for Base network
+    retryCount: 2, // Retry failed requests once
+    retryDelay: 1000, // Wait 1s between retries
+  }),
 });
 
 // Get wallet client for transactions (requires user's wallet)
@@ -57,8 +80,14 @@ export const alchemyFetch = async (endpoint: string, options?: RequestInit) => {
 
 // JSON-RPC helper for Alchemy
 export const alchemyRPC = async (method: string, params: unknown[] = []) => {
+  const apiKey = import.meta.env.VITE_ALCHEMY_API_KEY;
+  
+  if (!apiKey || apiKey === '') {
+    throw new Error('Alchemy API key not configured. Add VITE_ALCHEMY_API_KEY to .env');
+  }
+
   const response = await fetch(
-    `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`,
+    `https://base-mainnet.g.alchemy.com/v2/${apiKey}`,
     {
       method: 'POST',
       headers: {
@@ -72,6 +101,11 @@ export const alchemyRPC = async (method: string, params: unknown[] = []) => {
       }),
     }
   );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Alchemy RPC error ${response.status}: ${errorText.substring(0, 200)}`);
+  }
 
   const data = await response.json();
 

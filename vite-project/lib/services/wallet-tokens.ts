@@ -1,50 +1,22 @@
-import { alchemyRPC } from '../config/client';
 import type { Token } from '../types';
-import { getTokenInfo, getTokenMetadata } from './token';
+import { getTokenInfo } from './token';
 
 /**
- * Get all token balances for a wallet address using Alchemy API
+ * Get all token balances for a wallet address
+ * Note: This is a simplified version that doesn't use Alchemy-specific APIs
+ * For full functionality, you'd need to track transfers or use an indexer
  */
 export async function getWalletTokens(walletAddress: string): Promise<Token[]> {
   try {
-    // Use Alchemy SDK method to get token balances
-    const data = await alchemyRPC('alchemy_getTokenBalances', [walletAddress]);
+    // For now, return empty array as we need to track token transfers
+    // to determine which tokens a wallet holds. This requires either:
+    // 1. An indexer service like Alchemy's Enhanced APIs (requires Growth plan)
+    // 2. Scanning all transfer events for the wallet (expensive)
+    // 3. Using a public API that tracks wallet tokens
     
-    if (!data || !data.tokenBalances) {
-      return [];
-    }
-
-    // Filter out tokens with zero balance
-    const nonZeroBalances = data.tokenBalances.filter(
-      (token: { tokenBalance: string }) => token.tokenBalance !== '0' && token.tokenBalance !== '0x0'
-    );
-
-    // Fetch metadata for each token
-    const tokens: Token[] = [];
+    console.warn('getWalletTokens: Token balance tracking requires paid Alchemy plan or custom indexer');
     
-    for (const tokenBalance of nonZeroBalances.slice(0, 20)) { // Limit to 20 tokens
-      try {
-        const metadata = await alchemyRPC('alchemy_getTokenMetadata', [
-          tokenBalance.contractAddress,
-        ]);
-
-        if (metadata && metadata.symbol) {
-          tokens.push({
-            address: tokenBalance.contractAddress,
-            name: metadata.name || 'Unknown Token',
-            symbol: metadata.symbol,
-            decimals: metadata.decimals || 18,
-            logoURI: metadata.logo,
-            chainId: 8453, // Base chain
-          });
-        }
-      } catch (error) {
-        console.error(`Error fetching metadata for ${tokenBalance.contractAddress}:`, error);
-        // Continue with other tokens
-      }
-    }
-
-    return tokens;
+    return [];
   } catch (error) {
     console.error('Error fetching wallet tokens:', error);
     return [];
