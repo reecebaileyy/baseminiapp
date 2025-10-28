@@ -173,7 +173,7 @@ export function buildUniswapV3SwapData(
  * requires WebSocket or special filter support that's not available on free tier
  */
 export function watchPoolCreation(
-  callback: (token0: string, token1: string, fee: number, pool: string) => void
+  _callback: (token0: string, token1: string, fee: number, pool: string) => void
 ): () => void {
   // Disabled to avoid 400 errors from filter-based polling
   // This would require WebSocket or special Alchemy filter APIs

@@ -1,12 +1,12 @@
 import type { Token } from '../types';
-import { getTokenInfo } from './token';
+import { getTokenInfo, getTokenMetadata } from './token';
 
 /**
  * Get all token balances for a wallet address
  * Note: This is a simplified version that doesn't use Alchemy-specific APIs
  * For full functionality, you'd need to track transfers or use an indexer
  */
-export async function getWalletTokens(walletAddress: string): Promise<Token[]> {
+export async function getWalletTokens(_walletAddress: string): Promise<Token[]> {
   try {
     // For now, return empty array as we need to track token transfers
     // to determine which tokens a wallet holds. This requires either:
@@ -36,15 +36,10 @@ export async function getTokenFromAddress(tokenAddress: string): Promise<Token |
     // Try to fetch token info
     const tokenInfo = await getTokenInfo(tokenAddress);
     
-    // Try to get logo from Alchemy metadata
-    try {
-      const metadata = await getTokenMetadata(tokenAddress);
-      if (metadata?.logo) {
-        tokenInfo.logoURI = metadata.logo;
-      }
-    } catch {
-      // Logo is optional, continue without it
-    }
+    // Note: getTokenMetadata() currently returns null as Alchemy's Enhanced APIs
+    // require a Growth plan. Logo should be provided via the TokenWithMetrics type.
+    // This is kept for future enhancement when metadata API is available.
+    await getTokenMetadata(tokenAddress);
 
     return tokenInfo;
   } catch (error) {

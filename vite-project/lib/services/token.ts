@@ -1,4 +1,4 @@
-import { publicClient, alchemyRPC } from '../config/client';
+import { publicClient } from '../config/client';
 import { ERC20_ABI } from '../constants/abis';
 import type { Token } from '../types';
 import { formatUnits } from 'viem';
@@ -120,7 +120,7 @@ export async function getTokenTotalSupply(tokenAddress: string): Promise<string>
  * Note: This would normally use Alchemy's Enhanced APIs which require Growth plan
  * For now, returns null - metadata should be provided from other sources
  */
-export async function getTokenMetadata(tokenAddress: string) {
+export async function getTokenMetadata(_tokenAddress: string) {
   try {
     // Alchemy's token metadata API requires Growth plan on Base chain
     // Returning null for free tier - tokens should provide their own metadata

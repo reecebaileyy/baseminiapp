@@ -36,7 +36,7 @@ interface InlineSwapWidgetProps {
  * - Pre-configured for ETH and USDC as source tokens
  * - Validates wallet connection before showing swap UI
  */
-export function InlineSwapWidget({ targetToken, onClose, defaultFromTokens }: InlineSwapWidgetProps) {
+export function InlineSwapWidget({ targetToken, onClose: _onClose, defaultFromTokens: _defaultFromTokens }: InlineSwapWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { address, chain } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -51,7 +51,7 @@ export function InlineSwapWidget({ targetToken, onClose, defaultFromTokens }: In
 
   // Convert TokenWithMetrics to OnchainKit Token format
   const targetTokenFormatted: Token = {
-    address: targetToken.address,
+    address: targetToken.address as `0x${string}`,
     chainId: 8453,
     decimals: targetToken.decimals,
     name: targetToken.name,
