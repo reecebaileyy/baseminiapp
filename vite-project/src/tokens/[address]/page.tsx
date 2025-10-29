@@ -36,7 +36,7 @@ export default function TokenDetails() {
         </header>
         <div className={styles.error}>
           <h2>Token not found</h2>
-          <Link to="/dashboard">Back to Scanner</Link>
+          <Link to="/graph">Back to Scanner</Link>
         </div>
       </div>
     );

@@ -29,7 +29,7 @@ export default function Home() {
               <div className={styles.featureIcon}>🔍</div>
               <h3>Token Scanner</h3>
               <p>Real-time detection of new token launches on Base</p>
-              <Link to="/dashboard" className={styles.featureBtn}>
+              <Link to="/graph" className={styles.featureBtn}>
                 Open Scanner
               </Link>
             </div>
