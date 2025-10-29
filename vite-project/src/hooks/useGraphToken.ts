@@ -66,11 +66,35 @@ export function useTokenStats(tokenAddress: string | undefined, options?: {
             totalSupply
             volume
             volumeUSD
+            untrackedVolumeUSD
             feesUSD
             txCount
             poolCount
+            totalValueLocked
             totalValueLockedUSD
+            totalValueLockedUSDUntracked
             derivedETH
+            whitelistPools(first: 1000, where: { liquidity_gt: "0" }, orderBy: totalValueLockedUSD, orderDirection: desc) {
+              id
+              token0 {
+                id
+                symbol
+                decimals
+              }
+              token1 {
+                id
+                symbol
+                decimals
+              }
+              token0Price
+              token1Price
+              totalValueLockedToken0
+              totalValueLockedToken1
+              totalValueLockedUSD
+              liquidityProviderCount
+              volumeUSD
+              untrackedVolumeUSD
+            }
             tokenDayData(first: $dayDataFirst, orderBy: date, orderDirection: desc) {
               id
               date
@@ -87,6 +111,10 @@ export function useTokenStats(tokenAddress: string | undefined, options?: {
               close
             }
           }
+          bundles(first: 1) {
+            id
+            ethPriceUSD
+          }
         }
       `;
 
@@ -94,7 +122,11 @@ export function useTokenStats(tokenAddress: string | undefined, options?: {
         tokenId: tokenAddress.toLowerCase(),
         dayDataFirst 
       });
-      return result?.data?.token;
+      return {
+        token: result?.data?.token,
+        ethPrice: result?.data?.bundles?.[0]?.ethPriceUSD || null,
+        pools: result?.data?.token?.whitelistPools || [],
+      };
     },
     enabled: !!tokenAddress,
     staleTime: 60000, // 1 minute
@@ -141,8 +173,10 @@ export function useTokenStats(tokenAddress: string | undefined, options?: {
   });
 
   return {
-    token: tokenQuery.data,
-    dayData: tokenQuery.data?.tokenDayData || [],
+    token: tokenQuery.data?.token,
+    ethPrice: tokenQuery.data?.ethPrice,
+    pools: tokenQuery.data?.pools || [],
+    dayData: tokenQuery.data?.token?.tokenDayData || [],
     hourData: hourDataQuery.data || [],
     isLoading: tokenQuery.isLoading || hourDataQuery.isLoading,
     isError: tokenQuery.isError || hourDataQuery.isError,
