@@ -1,0 +1,12 @@
+query GetPoolManagers {
+  poolManagers(first: 5) {
+    id
+    poolCount
+    txCount
+    totalVolumeUSD
+  }
+  bundles(first: 5) {
+    id
+    ethPriceUSD
+  }
+}

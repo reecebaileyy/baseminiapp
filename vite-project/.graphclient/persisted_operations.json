@@ -1,0 +1,3 @@
+{
+  "99afc8821e37b4012d142b4bda063f4efde1cd091fc9efe1f454442a26c3a53a": "query GetPoolManagers {\n  poolManagers(first: 5) {\n    id\n    poolCount\n    txCount\n    totalVolumeUSD\n  }\n  bundles(first: 5) {\n    id\n    ethPriceUSD\n  }\n}"
+}

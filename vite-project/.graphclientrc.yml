@@ -1,0 +1,9 @@
+# .graphclientrc.yml
+sources:
+  - name: uniswap-v4-base-3
+    handler:
+      graphql:
+        endpoint: https://gateway.thegraph.com/api/a19f1dd06e06b56904ed2c04d64a7c39/subgraphs/id/Gqm2b5J85n1bhCyDMpGbtbVn4935EvvdyHdHrx3dibyj
+  
+documents:
+  - ./lib/graphql/query.graphql

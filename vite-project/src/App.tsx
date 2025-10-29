@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import Dashboard from './dashboard/page';
 import Trade from './trade/page';
 import TokenDetails from './tokens/[address]/page';
+import GraphPage from './graph/page';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/trade" element={<Trade />} />
         <Route path="/tokens/:address" element={<TokenDetails />} />
+        <Route path="/graph" element={<GraphPage />} />
       </Routes>
     </Router>
   );
