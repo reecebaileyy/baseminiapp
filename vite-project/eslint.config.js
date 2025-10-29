@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
-export default defineConfig([
+export deeqfafrfault defineConfig([
   globalIgnores(['dist']),
   {
     files: ['**/*.{ts,tsx}'],

@@ -1,168 +1,70 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { SignJWT } from 'jose';
-import crypto from 'crypto';
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { generateJwt } from "@coinbase/cdp-sdk/auth";
+import 'dotenv/config';
 
-const ALLOWED_ORIGINS = [
-    'https://basescout.vercel.app',
-    'http://localhost:3000',
-];
-
-interface CreateSessionRequest {
-    addresses: Array<{
-        address: string;
-        blockchains: string[];
-    }>;
-    assets?: string[];
-    clientIp?: string;
-}
-
-export default async function handler(
-    req: VercelRequest,
-    res: VercelResponse
-) {
-    console.log('🔹 create-session invoked');
-    const origin = req.headers.origin || '';
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
+function getClientIp(req: VercelRequest): string {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    if (typeof forwardedFor === 'string') {
+      return forwardedFor.split(',')[0].trim();
     }
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    // Fallbacks
+    return (
+      req.headers['x-real-ip']?.toString() ||
+      req.socket.remoteAddress ||
+      '127.0.0.1'
+    );
+  }
 
-    // Handle preflight
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
-    // Only allow POST requests
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
-
+export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
-        // Get environment variables
-        const API_KEY_ID = process.env.COINBASE_API_KEY_ID;
-        const API_KEY_SECRET = process.env.COINBASE_API_KEY_SECRET;
-
-
-
-        if (!API_KEY_ID || !API_KEY_SECRET) {
-            console.error('Missing Coinbase API credentials');
-            return res.status(500).json({
-                error: 'Server configuration error',
-                message: 'Missing COINBASE_API_KEY_ID or COINBASE_API_KEY_SECRET environment variables'
-            });
+        if (req.method !== "POST") {
+            return res.status(405).json({ error: "Method not allowed" });
         }
 
-        // Parse request body
-        const { addresses, assets = ['ETH', 'USDC'], clientIp }: CreateSessionRequest = req.body;
+        const token = await generateJwt({
+            apiKeyId: process.env.KEY_NAME!,
+            apiKeySecret: process.env.KEY_SECRET!,
+            requestMethod: process.env.REQUEST_METHOD!,
+            requestHost: process.env.REQUEST_HOST!,
+            requestPath: process.env.REQUEST_PATH!,
+        });
 
-        if (!addresses || !Array.isArray(addresses) || addresses.length === 0) {
-            return res.status(400).json({ error: 'At least one address is required' });
-        }
+        console.log("✅ JWT generated successfully");
+        const clientIp = getClientIp(req);
+        const body = req.body || {};
 
-        // Get client IP from the request (skip private IPs for local dev)
-        let clientIpAddress: string | undefined;
-        if (clientIp) {
-            clientIpAddress = clientIp;
-        } else if (req.headers['x-forwarded-for']) {
-            const ips = req.headers['x-forwarded-for'].toString().split(',');
-            clientIpAddress = ips[0].trim();
-        }
-
-        // Don't send clientIp if it's a private/local IP address
-        if (clientIpAddress && (
-            clientIpAddress.startsWith('127.') ||
-            clientIpAddress.startsWith('192.168.') ||
-            clientIpAddress.startsWith('10.') ||
-            clientIpAddress.startsWith('172.') ||
-            clientIpAddress === '::1' ||
-            clientIpAddress === 'localhost'
-        )) {
-            clientIpAddress = undefined;
-        }
-
-        // Generate JWT Bearer Token manually
-        let bearerToken: string;
-        try {
-            // Convert base64 DER key to EC private key
-            const ecKey = crypto.createPrivateKey({
-                key: API_KEY_SECRET,
-                format: 'der',
-                type: 'pkcs8',
-                encoding: 'base64',
-            });
-
-            // Create JWT payload for Bearer Token
-            const now = Math.floor(Date.now() / 1000);
-            const uri = `POST api.developer.coinbase.com/onramp/v1/token`;
-
-            const payload = {
-                iss: 'cdp',
-                sub: API_KEY_ID,
-                aud: 'https://api.developer.coinbase.com',
-                iat: now,
-                nbf: now,
-                exp: now + 120, // 2 minutes
-                jti: crypto.randomBytes(16).toString('hex'),
-                uris: [uri],
-            };
-
-            // Sign JWT using jose library
-            bearerToken = await new SignJWT(payload)
-                .setProtectedHeader({ alg: 'ES256', typ: 'JWT' })
-                .sign(ecKey);
-        } catch (signError) {
-            console.error('JWT generation error:', signError);
-            return res.status(500).json({
-                error: 'JWT generation failed',
-                message: 'Unable to generate JWT with provided API key',
-                details: signError instanceof Error ? signError.message : 'Unknown signing error'
-            });
-        }
-
-        // Prepare request body for session token
-        const requestBody: any = {
-            addresses: addresses,
-            assets: assets,
-        };
-
-        // Only include clientIp if it's a valid public IP
-        if (clientIpAddress) {
-            requestBody.clientIp = clientIpAddress;
-        }
-
-        // Exchange JWT for session token
         const response = await fetch('https://api.developer.coinbase.com/onramp/v1/token', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${bearerToken}`,
+                Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(requestBody),
+            body: JSON.stringify({
+                addresses: body.addresses || [],
+                assets: body.assets || ['ETH', 'USDC'],
+                clientIp,
+            }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            console.error('Coinbase API error:', data);
+            const errorText = await response.text();
+            console.error('❌ Coinbase Session Token API error:', errorText);
             return res.status(response.status).json({
                 error: 'Failed to generate session token',
-                details: data
+                details: errorText,
             });
         }
 
-        // Return session token to frontend
-        return res.status(200).json({
-            token: data.token,
-            channel_id: data.channel_id || ''
-        });
+        const data = await response.json();
+
+        console.log('✅ Session token generated successfully');
+        return res.status(200).json({ token: data.token });
 
     } catch (error) {
-        console.error('Error generating session token:', error);
+        console.error("❌ Error generating session token:", error);
         return res.status(500).json({
-            error: 'Internal server error',
-            message: error instanceof Error ? error.message : 'Unknown error'
+            error: "Internal server error",
+            message: error instanceof Error ? error.message : "Unknown error",
         });
     }
 }
-

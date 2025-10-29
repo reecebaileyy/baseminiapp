@@ -1,1 +1,30 @@
-.vercel
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+build/
+.vite/ # Vite's default cache directory
+
+# Environment files
+.env.local
+.env.*.local
+!.env.example
+.env
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
