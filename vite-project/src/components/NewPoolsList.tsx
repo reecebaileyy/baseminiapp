@@ -97,9 +97,8 @@ export function NewPoolsList({ limit = 20 }: NewPoolsListProps) {
         </button>
       </div>
       <div className={styles.poolsGrid}>
-        {pools.map((pool) => {
+        {pools.map((pool: any) => {
           const latestDay = pool.poolDayData?.[0];
-          const latestHour = pool.poolHourData?.[0];
           
           return (
             <div key={pool.id} className={styles.poolCard}>

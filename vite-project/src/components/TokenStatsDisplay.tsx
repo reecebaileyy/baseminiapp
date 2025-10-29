@@ -50,7 +50,7 @@ export function TokenStatsDisplay({ tokenAddress }: TokenStatsDisplayProps) {
   const latestHour = hourData[0];
   
   // Calculate holder count from pools (sum of all liquidity providers)
-  const holderCount = pools.reduce((sum, pool: any) => {
+  const holderCount = pools.reduce((sum: number, pool: any) => {
     const count = parseValue(pool.liquidityProviderCount);
     return sum + (count || 0);
   }, 0);
@@ -60,7 +60,7 @@ export function TokenStatsDisplay({ tokenAddress }: TokenStatsDisplayProps) {
   const tokenTVL = parseValue(token.totalValueLockedUSD) || parseValue(token.totalValueLockedUSDUntracked);
   
   // Fallback: calculate from pools if token TVL is missing
-  const tvlFromPools = pools.reduce((sum, pool: any) => {
+  const tvlFromPools = pools.reduce((sum: number, pool: any) => {
     const tvl = parseValue(pool.totalValueLockedUSD);
     return sum + (tvl || 0);
   }, 0);
@@ -74,7 +74,7 @@ export function TokenStatsDisplay({ tokenAddress }: TokenStatsDisplayProps) {
   // Hour data is ordered desc, so first 24 entries are the most recent 24 hours
   const volume24hFromHours = hourData
     .slice(0, 24) // Most recent 24 hours
-    .reduce((sum, hour: any) => {
+    .reduce((sum: number, hour: any) => {
       const tracked = parseValue(hour.volumeUSD) || 0;
       const untracked = parseValue(hour.untrackedVolumeUSD) || 0;
       return sum + tracked + untracked;
@@ -350,7 +350,7 @@ export function TokenStatsDisplay({ tokenAddress }: TokenStatsDisplayProps) {
                 </tr>
               </thead>
               <tbody>
-                {dayData.map((day) => {
+                {dayData.map((day: any) => {
                   const date = new Date(day.date * 1000);
                   return (
                     <tr key={day.id}>
@@ -386,7 +386,7 @@ export function TokenStatsDisplay({ tokenAddress }: TokenStatsDisplayProps) {
                 </tr>
               </thead>
               <tbody>
-                {hourData.slice(0, 24).map((hour) => {
+                {hourData.slice(0, 24).map((hour: any) => {
                   const date = new Date(hour.periodStartUnix * 1000);
                   return (
                     <tr key={hour.id}>

@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { execute } from '../../.graphclient';
 import { gql } from '@graphql-mesh/utils';
-import type { DocumentNode } from '@graphql-typed-document-node/core';
 
 /**
  * Hook to fetch token by address
