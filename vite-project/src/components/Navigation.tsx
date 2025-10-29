@@ -17,10 +17,10 @@ export function Navigation() {
               Home
             </Link>
             <Link 
-              to="/dashboard" 
-              className={`${styles.navLink} ${location.pathname === '/dashboard' ? styles.active : ''}`}
+              to="/graph" 
+              className={`${styles.navLink} ${location.pathname === '/graph' ? styles.active : ''}`}
             >
-              Scanner
+              Index
             </Link>
             <Link 
               to="/trade" 

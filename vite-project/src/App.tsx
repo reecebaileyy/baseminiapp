@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
-import Dashboard from './dashboard/page';
 import Trade from './trade/page';
 import TokenDetails from './tokens/[address]/page';
 import GraphPage from './graph/page';
@@ -10,7 +9,6 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/trade" element={<Trade />} />
         <Route path="/tokens/:address" element={<TokenDetails />} />
         <Route path="/graph" element={<GraphPage />} />
