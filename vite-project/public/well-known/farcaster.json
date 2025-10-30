@@ -6,12 +6,12 @@
       "signature": "Vo0t91UjHnPtHVHqEF9xE5XVbeyitIZwvLSSgStzvOA3mVRqLFfJTWqZ0eFKdUEUcDZaBzWmLXiO0FvJkBBfkBs="
     },
     "baseBuilder": {
-      "allowedAddresses": ["0x37058bec8B2Ab89188742765843dDDD3fD23199f"],
+      "allowedAddresses": ["0x37058bec8B2Ab89188742765843dDDD3fD23199f"]
     },
     "miniapp": {
       "version": "1",
-      "name": "BaseScout",
-      "subtitle": "",
+      "name": "Base Scout",
+      "subtitle": "Discover, swap, buy",
       "description": "Simple mobile tool for discovering, swapping and buying tokens on Base",
       "screenshotUrls": [],
       "iconUrl": "https://basescout.vercel.app//icon.png",
@@ -25,6 +25,6 @@
       "tagline": "Discover, swap, buy",
       "ogTitle": "Base Scout",
       "ogDescription": "Discover, swap, buy tokens on Base",
-      "ogImageUrl": "/og.png",
-    },
+      "ogImageUrl": "/og.png"
+    }
   }
