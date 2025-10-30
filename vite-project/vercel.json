@@ -10,7 +10,7 @@
       "maxDuration": 30
     },
     "api/discover.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/tokens.ts": {
       "maxDuration": 30

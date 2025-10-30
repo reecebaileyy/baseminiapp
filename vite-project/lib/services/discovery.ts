@@ -129,25 +129,13 @@ export async function validateERC20(tokenAddress: string): Promise<{
 
 /**
  * Get deployer address for a token contract
+ * Note: Finding the deployer requires scanning contract creation transactions which is complex
+ * For now, we return a placeholder since deployer info isn't critical for discovery
  */
 export async function getTokenDeployer(tokenAddress: string): Promise<string> {
-  try {
-    // Get the contract creation transaction
-    const txHash = await publicClient.getTransactionReceipt({
-      address: tokenAddress as `0x${string}`,
-    } as any);
-
-    if (!txHash) {
-      return '0x0000000000000000000000000000000000000000';
-    }
-
-    // Get the transaction to find the deployer
-    const tx = await publicClient.getTransaction({ hash: txHash.transactionHash });
-    return tx.from;
-  } catch (error) {
-    console.error(`Error getting deployer for ${tokenAddress}:`, error);
-    return '0x0000000000000000000000000000000000000000';
-  }
+  // TODO: Implement proper deployer detection by scanning ContractCreation events
+  // For now, return placeholder to avoid expensive RPC calls
+  return '0x0000000000000000000000000000000000000000';
 }
 
 /**

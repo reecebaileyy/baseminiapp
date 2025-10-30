@@ -120,8 +120,8 @@ export function NewTokensList({ limit = 20 }: NewTokensListProps) {
               </div>
 
               <div className={styles.metric}>
-                <span className={styles.metricLabel}>Source:</span>
-                <span className={styles.metricValue}>{token.discoveredFrom}</span>
+                <span className={styles.metricLabel}>Status:</span>
+                <span className={styles.metricValue}>{token.isListed ? 'Listed' : 'Unlisted'}</span>
               </div>
             </div>
 

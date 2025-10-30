@@ -123,7 +123,11 @@ export function TrendingTokensList({ limit = 10 }: TrendingTokensListProps) {
 
               <div className={styles.metric} title="Number of token holders">
                 <span className={styles.metricLabel}>Holders:</span>
-                <span className={styles.metricValue}>{token.holderCount.toLocaleString()}</span>
+                <span className={styles.metricValue}>
+                  {token.holderCount > 0 && token.holderCount < 1e10 
+                    ? token.holderCount.toLocaleString() 
+                    : 'N/A'}
+                </span>
               </div>
             </div>
 

@@ -142,7 +142,12 @@ export function TokenTable({ filter = 'all', limit = 100 }: TokenTableProps) {
                 </td>
                 <td title="24h trading volume from DEXs">{token.volume24h > 0 ? formatCurrency(token.volume24h) : 'N/A'}</td>
                 <td title="Total Value Locked (TVL) in USD">{token.liquidity > 0 ? formatCurrency(token.liquidity) : 'N/A'}</td>
-                <td title="Number of token holders">{typeof token.holderCount === 'number' ? token.holderCount.toLocaleString() : Number(token.holderCount).toLocaleString()}</td>
+                <td title="Number of token holders">
+                  {(() => {
+                    const count = typeof token.holderCount === 'number' ? token.holderCount : Number(token.holderCount);
+                    return (count > 0 && count < 1e10) ? count.toLocaleString() : 'N/A';
+                  })()}
+                </td>
                 <td title="Market capitalization">{token.marketCap > 0 ? formatCurrency(token.marketCap) : 'N/A'}</td>
                 <td className={token.isListed ? styles.positive : styles.negative}>
                   {token.isListed 
