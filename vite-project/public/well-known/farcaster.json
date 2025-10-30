@@ -1,0 +1,30 @@
+{
+
+    "accountAssociation": {
+      "header": "eyJmaWQiOjEzOTkxOTAsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg2RWUwMzExYWNFNDQwYjNDYzAwMzA3MWJDY0VmMmI0ZTZDQzM2MjIzIn0",
+      "payload": "eyJkb21haW4iOiJiYXNlbWluaWFwcC1udS52ZXJjZWwuYXBwIn0",
+      "signature": "Vo0t91UjHnPtHVHqEF9xE5XVbeyitIZwvLSSgStzvOA3mVRqLFfJTWqZ0eFKdUEUcDZaBzWmLXiO0FvJkBBfkBs="
+    },
+    "baseBuilder": {
+      "allowedAddresses": ["0x37058bec8B2Ab89188742765843dDDD3fD23199f"],
+    },
+    "miniapp": {
+      "version": "1",
+      "name": "BaseScout",
+      "subtitle": "",
+      "description": "Simple mobile tool for discovering, swapping and buying tokens on Base",
+      "screenshotUrls": [],
+      "iconUrl": "https://basescout.vercel.app//icon.png",
+      "splashImageUrl": "https://basescout.vercel.app//splash.png",
+      "splashBackgroundColor": "#000000",
+      "homeUrl": "https://basescout.vercel.app/",
+      "webhookUrl": "https://basescout.vercel.app/",
+      "primaryCategory": "utility",
+      "tags": ["coins", "tokens", "base"],
+      "heroImageUrl": "https://basescout.vercel.app/hero.png",
+      "tagline": "Discover, swap, buy",
+      "ogTitle": "Base Scout",
+      "ogDescription": "Discover, swap, buy tokens on Base",
+      "ogImageUrl": "/og.png",
+    },
+  }
