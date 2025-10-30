@@ -117,10 +117,10 @@ export function InlineSwapWidget({ targetToken, onClose: _onClose, defaultFromTo
       {isExpanded && (
         <div className={styles.swapContent}>
           <Swap
-            onError={(error) => {
+            onError={(error: any) => {
               console.error('Swap error:', error);
             }}
-            onStatus={(status) => {
+            onStatus={(status: any) => {
               console.log('Swap status:', status);
             }}
           >

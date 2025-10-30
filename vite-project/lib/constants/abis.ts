@@ -171,6 +171,21 @@ export const UNISWAP_V3_ROUTER_ABI = [
   },
 ] as const;
 
+export const AERODROME_FACTORY_ABI = [
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'token0', type: 'address' },
+      { indexed: true, name: 'token1', type: 'address' },
+      { indexed: false, name: 'stable', type: 'bool' },
+      { indexed: false, name: 'pair', type: 'address' },
+      { indexed: false, name: '', type: 'uint256' },
+    ],
+    name: 'PairCreated',
+    type: 'event',
+  },
+] as const;
+
 export const AERODROME_ROUTER_ABI = [
   {
     inputs: [

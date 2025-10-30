@@ -29,3 +29,6 @@ build/
 .DS_Store
 Thumbs.db
 .vercel
+
+/src/generated/prisma
+/scripts

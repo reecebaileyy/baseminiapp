@@ -16,6 +16,35 @@ VITE_ALCHEMY_API_KEY=your-alchemy-api-key-here
 # Get your API keys from: https://portal.cdp.coinbase.com/
 COINBASE_API_KEY_ID=your-coinbase-api-key-id
 COINBASE_API_KEY_SECRET=your-coinbase-api-key-secret
+
+# Vercel KV (auto-configured on Vercel)
+# These are automatically set when you create a Vercel KV database
+# For local development, you can leave these empty
+KV_URL=
+KV_REST_API_URL=
+KV_REST_API_TOKEN=
+KV_REST_API_READ_ONLY_TOKEN=
+
+# Optional - API protection for token discovery
+DISCOVERY_API_KEY=your-secret-key
+
+# The Graph API Key (for server-side subgraph queries)
+# Get your API key from: https://thegraph.com/studio/
+VITE_GRAPH_API_KEY=your-graph-api-key-here
+```
+
+### Setting Up GraphQL Mesh Configuration
+
+The project uses GraphQL Mesh for client-side queries. You need to configure the API key:
+
+1. Copy the example configuration file:
+   ```bash
+   cp .graphclientrc.yml.example .graphclientrc.yml
+   ```
+
+2. Open `.graphclientrc.yml` and replace `YOUR_API_KEY_HERE` with your actual The Graph API key
+
+3. The `.graphclientrc.yml` file is gitignored to protect your API key
 ```
 
 ### Getting Your Coinbase Developer Platform API Keys
@@ -137,6 +166,60 @@ This will:
 - Start the Vite dev server
 - Make the `/api/create-session` serverless function available
 - Allow the Buy widget to work properly
+- **Make the token discovery API endpoints available**
+
+**Important for Token Discovery:**
+
+**⚠️ CRITICAL: The discovery process requires vercel dev to be running (not just `npm run dev`)** 
+
+The API endpoints need the Vercel serverless runtime to work properly.
+
+To run the full token discovery system locally:
+
+1. **Install Vercel CLI** (if not already installed):
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Run the development server with Vercel**:
+   ```bash
+   vercel dev
+   ```
+   This starts the frontend and all API endpoints locally.
+   
+   **Important:** Make sure vercel dev is running in the terminal before testing APIs.
+   
+3. **Wait for vercel dev to fully start** (look for "Ready" message in terminal)
+
+4. **Set up Vercel KV** (required for token storage):
+   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
+   - Create a new KV database (or use an existing one)
+   - Copy the connection details to your `.env` file:
+     ```bash
+     KV_REST_API_URL=https://your-kv-endpoint.upstash.io
+     KV_REST_API_TOKEN=your-token
+     ```
+   - Restart `vercel dev` after adding KV credentials
+
+5. **Trigger token discovery** (in a new terminal):
+   ```bash
+   curl -X POST http://localhost:3000/api/discover \
+     -H "Content-Type: application/json" \
+     -d '{"incremental": true, "blocksToScan": 100000}'
+   ```
+   Or use any HTTP client (Postman, Insomnia, etc.)
+
+6. **View discovered tokens**:
+   - Open http://localhost:3000 in your browser
+   - Navigate to the "All Tokens" tab
+   - You should see discovered tokens appear
+
+**Note:** Without Vercel KV configured, the API will return empty lists but won't crash. To see actual data, you need KV set up.
+
+**For Production Deployment:**
+- Deploy to Vercel (KV is automatically configured)
+- Call `POST /api/discover` to trigger initial scan
+- Tokens will appear in your UI
 
 ### Build for Production
 ```bash

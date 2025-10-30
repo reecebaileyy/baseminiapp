@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Token Discovery Schema
+/// Represents all ERC-20 tokens discovered on Base network
+model Token {
+  id        String   @id @default(cuid())
+  address   String   @unique // ERC-20 token address
+  name      String
+  symbol    String
+  decimals  Int
+  totalSupply String @default("0") // Store as string to handle large numbers
+  
+  deployer          String   // Address of contract deployer
+  createdAtBlock    BigInt   // Block number when token was created
+  createdAtTimestamp Int     // Unix timestamp in seconds
+  discoveredFrom    String   // 'uniswap-v3' | 'aerodrome'
+  
+  lastUpdated Int @default(0) // Unix timestamp of last metadata update
+  
+  /// Enriched metrics (updated via background jobs)
+  priceUSD          Float?   @default(null) // Current USD price
+  volume24h         Float    @default(0)    // 24h trading volume in USD
+  tvlUSD            Float    @default(0)    // Total value locked in USD
+  marketCap         Float?   @default(null) // Market cap in USD
+  isListed          Boolean  @default(false) // Has active DEX pools
+  sourceDEX         String?  @default(null) // Primary DEX: 'uniswap-v3' | 'aerodrome' | 'both'
+  poolCount         Int      @default(0)    // Number of active pools
+  holderCount       Int      @default(0)    // Approximate holder count
+  
+  /// Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  /// Indexes for fast queries
+  @@index([isListed])
+  @@index([volume24h])
+  @@index([tvlUSD])
+  @@index([createdAtTimestamp])
+  @@index([sourceDEX])
+  @@map("tokens")
+}
+
+/// Discovery progress tracking
+model DiscoveryProgress {
+  id                 String   @id @default(cuid())
+  lastScannedBlock   BigInt
+  totalTokensDiscovered Int
+  lastScanTimestamp  Int
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("discovery_progress")
+}
+
+/// Token metrics history (optional future feature)
+/// Can be used to track price/volume over time
+model TokenMetricsHistory {
+  id        String   @id @default(cuid())
+  tokenId   String
+  token     Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  
+  priceUSD      Float
+  volume24h     Float
+  tvlUSD        Float
+  holderCount   Int
+  
+  recordedAt Int // Unix timestamp
+  
+  createdAt DateTime @default(now())
+  
+  @@index([tokenId, recordedAt])
+  @@map("token_metrics_history")
+}

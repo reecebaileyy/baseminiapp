@@ -66,28 +66,24 @@ export function TokenStatsDisplay({ tokenAddress }: TokenStatsDisplayProps) {
   }, 0);
   const totalTVL = tokenTVL || tvlFromPools;
   
-  // 24h Volume - Use latest day data (tokenDayData) which contains daily aggregated volume
-  // This is the most accurate as it's pre-aggregated for the day
-  const volume24hFromDay = (parseValue(latestDay?.volumeUSD) || 0) + (parseValue(latestDay?.untrackedVolumeUSD) || 0);
-  
-  // Fallback: calculate from hourly data if day data is not available or zero
-  // Hour data is ordered desc, so first 24 entries are the most recent 24 hours
-  const volume24hFromHours = hourData
-    .slice(0, 24) // Most recent 24 hours
-    .reduce((sum: number, hour: any) => {
-      const tracked = parseValue(hour.volumeUSD) || 0;
-      const untracked = parseValue(hour.untrackedVolumeUSD) || 0;
-      return sum + tracked + untracked;
-    }, 0);
-  
-  // Use day data first (most accurate), then hourly sum, then token totals
-  const volume24h = volume24hFromDay > 0 
-    ? volume24hFromDay
-    : (volume24hFromHours > 0 
-      ? volume24hFromHours
-      : ((parseValue(token.volumeUSD) || 0) + (parseValue(token.untrackedVolumeUSD) || 0)));
-  
-  // Get 1h volume from latest hour (include untracked)
+  // Rolling 24h volume from hourly buckets (UTC-aligned, last completed hours)
+  const nowSec = Math.floor(Date.now() / 1000);
+  const cutoff = nowSec - 86400;
+  const volume24hRolling = hourData.reduce((sum: number, hour: any) => {
+    if (!hour || typeof hour.periodStartUnix !== 'number') return sum;
+    if (hour.periodStartUnix < cutoff) return sum;
+    const tracked = parseValue(hour.volumeUSD) || 0;
+    const untracked = parseValue(hour.untrackedVolumeUSD) || 0;
+    return sum + tracked + untracked;
+  }, 0);
+
+  // Prefer rolling 24h; if empty, fall back to latest day aggregate, then token totals
+  const volume24h = volume24hRolling > 0
+    ? volume24hRolling
+    : ((parseValue(latestDay?.volumeUSD) || 0) + (parseValue(latestDay?.untrackedVolumeUSD) || 0)) ||
+      ((parseValue(token.volumeUSD) || 0) + (parseValue(token.untrackedVolumeUSD) || 0));
+
+  // Last 1h = latest completed hour bucket
   const tracked1h = parseValue(latestHour?.volumeUSD) || 0;
   const untracked1h = parseValue(latestHour?.untrackedVolumeUSD) || 0;
   const volume1h = tracked1h + untracked1h;

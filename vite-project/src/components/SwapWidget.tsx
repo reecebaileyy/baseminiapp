@@ -53,7 +53,7 @@ export function SwapWidget() {
 
   return (
     <Swap
-      onError={(error) => {
+      onError={(error: any) => {
         console.error('Swap error details:', error);
         console.error('Error object keys:', Object.keys(error || {}));
         console.error('Error stringified:', JSON.stringify(error, null, 2));
@@ -64,7 +64,7 @@ export function SwapWidget() {
           console.error('Please verify your API key at: https://portal.cdp.coinbase.com/');
         }
       }}
-      onStatus={(status) => {
+      onStatus={(status: any) => {
         console.log('Swap status:', status);
       }}
     >

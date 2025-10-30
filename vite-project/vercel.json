@@ -8,6 +8,21 @@
   "functions": {
     "api/create-session.ts": {
       "maxDuration": 30
+    },
+    "api/discover.ts": {
+      "maxDuration": 60
+    },
+    "api/tokens.ts": {
+      "maxDuration": 30
+    },
+    "api/tokens/trending.ts": {
+      "maxDuration": 30
+    },
+    "api/tokens/new.ts": {
+      "maxDuration": 30
+    },
+    "api/tokens/[address].ts": {
+      "maxDuration": 30
     }
   }
 }

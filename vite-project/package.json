@@ -12,8 +12,10 @@
   "dependencies": {
     "@coinbase/cdp-sdk": "^1.38.4",
     "@coinbase/onchainkit": "^1.1.1",
+    "@metamask/sdk": "^0.33.1",
     "@tanstack/react-query": "^5.90.5",
     "@types/jsonwebtoken": "^9.0.10",
+    "@vercel/kv": "^1.0.1",
     "@vercel/node": "^5.5.1",
     "dotenv": "^17.2.3",
     "jsonwebtoken": "^9.0.2",
@@ -26,6 +28,7 @@
   "devDependencies": {
     "@eslint/js": "^9.36.0",
     "@graphprotocol/client-cli": "^3.0.7",
+    "@prisma/client": "^6.18.0",
     "@types/node": "^24.6.0",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
@@ -34,6 +37,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.22",
     "globals": "^16.4.0",
+    "prisma": "^6.18.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.45.0",
     "vite": "^7.1.7"

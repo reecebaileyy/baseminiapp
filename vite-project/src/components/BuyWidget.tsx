@@ -105,15 +105,15 @@ export function BuyWidget() {
     <div className={styles.buyWrapper}>
       <Buy 
         toToken={ETHToken}
-        onError={(error) => {
+        onError={(error: any) => {
           console.error('Buy error details:', error);
           console.error('Error object keys:', Object.keys(error || {}));
           console.error('Error stringified:', JSON.stringify(error, null, 2));
         }}
-        onStatus={(status) => {
+        onStatus={(status: any) => {
           console.log('Buy status:', status);
         }}
-        onSuccess={(receipt) => {
+        onSuccess={(receipt: any) => {
           console.log('Buy success:', receipt);
         }}
         {...(sessionToken && { sessionToken })}

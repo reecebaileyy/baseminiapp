@@ -82,6 +82,7 @@ export interface TokenQueryParams {
   minLiquidity?: number;
   minVolume?: number;
   timeframe?: '1h' | '24h' | '7d';
+  filter?: 'all' | 'listed' | 'unlisted';
 }
 
 // API Response Types
@@ -96,5 +97,36 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   pageSize: number;
+}
+
+// Token Discovery Types
+export interface DiscoveredToken {
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  totalSupply: string;
+  deployer: string;
+  createdAtBlock: number;
+  createdAtTimestamp: number;
+  discoveredFrom: 'uniswap-v3' | 'aerodrome';
+  lastUpdated: number;
+}
+
+export interface EnrichedToken extends DiscoveredToken {
+  priceUSD: number | null;
+  volume24h: number;
+  tvlUSD: number;
+  marketCap: number | null;
+  isListed: boolean;
+  sourceDEX: 'uniswap-v3' | 'aerodrome' | 'both' | null;
+  poolCount: number;
+  holderCount: number;
+}
+
+export interface TokenDiscoveryProgress {
+  lastScannedBlock: number;
+  totalTokensDiscovered: number;
+  lastScanTimestamp: number;
 }
 

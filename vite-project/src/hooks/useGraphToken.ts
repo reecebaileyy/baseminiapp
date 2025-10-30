@@ -57,7 +57,7 @@ export function useTokenStats(tokenAddress: string | undefined, options?: {
       
       const query = gql`
         query GetTokenStats($tokenId: ID!, $dayDataFirst: Int!) {
-          token(id: $tokenId) {
+          token(id: $tokenId) @source(name: "uniswap-v4-base-3") {
             id
             symbol
             name
@@ -69,31 +69,8 @@ export function useTokenStats(tokenAddress: string | undefined, options?: {
             feesUSD
             txCount
             poolCount
-            totalValueLocked
             totalValueLockedUSD
-            totalValueLockedUSDUntracked
             derivedETH
-            whitelistPools(first: 1000, where: { liquidity_gt: "0" }, orderBy: totalValueLockedUSD, orderDirection: desc) {
-              id
-              token0 {
-                id
-                symbol
-                decimals
-              }
-              token1 {
-                id
-                symbol
-                decimals
-              }
-              token0Price
-              token1Price
-              totalValueLockedToken0
-              totalValueLockedToken1
-              totalValueLockedUSD
-              liquidityProviderCount
-              volumeUSD
-              untrackedVolumeUSD
-            }
             tokenDayData(first: $dayDataFirst, orderBy: date, orderDirection: desc) {
               id
               date
@@ -110,9 +87,43 @@ export function useTokenStats(tokenAddress: string | undefined, options?: {
               close
             }
           }
-          bundles(first: 1) {
+          bundles(first: 1) @source(name: "uniswap-v4-base-3") {
             id
             ethPriceUSD
+          }
+
+          uniPoolsToken0: pools(
+            first: 500,
+            where: { token0: $tokenId, liquidity_gt: "0" },
+            orderBy: totalValueLockedUSD,
+            orderDirection: desc
+          ) @source(name: "uniswap-v4-base-3") {
+            id
+            token0 { id symbol decimals }
+            token1 { id symbol decimals }
+            feeTier
+            volumeUSD
+            totalValueLockedUSD
+            token0Price
+            token1Price
+            liquidityProviderCount
+          }
+
+          uniPoolsToken1: pools(
+            first: 500,
+            where: { token1: $tokenId, liquidity_gt: "0" },
+            orderBy: totalValueLockedUSD,
+            orderDirection: desc
+          ) @source(name: "uniswap-v4-base-3") {
+            id
+            token0 { id symbol decimals }
+            token1 { id symbol decimals }
+            feeTier
+            volumeUSD
+            totalValueLockedUSD
+            token0Price
+            token1Price
+            liquidityProviderCount
           }
         }
       `;
@@ -121,10 +132,14 @@ export function useTokenStats(tokenAddress: string | undefined, options?: {
         tokenId: tokenAddress.toLowerCase(),
         dayDataFirst 
       });
+      const uniPools = [
+        ...(result?.data?.uniPoolsToken0 || []),
+        ...(result?.data?.uniPoolsToken1 || []),
+      ];
       return {
         token: result?.data?.token,
         ethPrice: result?.data?.bundles?.[0]?.ethPriceUSD || null,
-        pools: result?.data?.token?.whitelistPools || [],
+        pools: uniPools,
       };
     },
     enabled: !!tokenAddress,
@@ -137,7 +152,7 @@ export function useTokenStats(tokenAddress: string | undefined, options?: {
       if (!tokenAddress) throw new Error('Token address is required');
       
       const query = gql`
-        query GetTokenHourData($tokenId: ID!, $first: Int!) {
+        query GetTokenHourData($tokenId: String!, $first: Int!) {
           tokenHourDatas(
             first: $first
             where: { token: $tokenId }

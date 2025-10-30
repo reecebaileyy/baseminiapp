@@ -63,7 +63,7 @@ query GetTokenStats($tokenId: ID!, $dayDataFirst: Int!) {
   }
 }
 
-query GetTokenHourData($tokenId: ID!, $first: Int!) {
+query GetTokenHourData($tokenId: String!, $first: Int!) {
   tokenHourDatas(
     first: $first
     where: { token: $tokenId }
@@ -137,5 +137,26 @@ query GetNewPools($first: Int!, $orderBy: Pool_orderBy!, $orderDirection: OrderD
       feesUSD
       tvlUSD
     }
+  }
+}
+
+# Combined query: Uniswap v4 (Base) + Aerodrome subgraph
+query GetUniAndAero($tokenId: ID!, $aeroFirst: Int!) {
+  # From your existing Uniswap v4 Base subgraph
+  token(id: $tokenId) @source(name: "uniswap-v4-base-3") {
+    id
+    symbol
+    name
+    derivedETH
+    totalValueLockedUSD
+  }
+
+  aeroPools: pools(first: $aeroFirst, orderBy: volumeUSD, orderDirection: desc)
+    @source(name: "aerodrome-base-full") {
+    id
+    volumeUSD
+    totalValueLockedUSD
+    token0 { id symbol name }
+    token1 { id symbol name }
   }
 }

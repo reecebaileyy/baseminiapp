@@ -1,11 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { Navigation } from "../components/Navigation";
+import { TokenTable } from "../components/TokenTable";
+import { NewTokensList } from "../components/NewTokensList";
+import { TrendingTokensList } from "../components/TrendingTokensList";
 import styles from "./Home.module.css";
+
+type TabType = 'all' | 'trending' | 'new';
 
 export default function Home() {
   const { setMiniAppReady, isMiniAppReady } = useMiniKit();
+  const [activeTab, setActiveTab] = useState<TabType>('all');
 
   useEffect(() => {
     if (!isMiniAppReady) {
@@ -18,55 +24,61 @@ export default function Home() {
       <Navigation />
 
       <div className={styles.content}>
-        <div className={styles.hero}>
-          <h1 className={styles.title}>Base Trading Platform</h1>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Token Discovery Platform</h1>
           <p className={styles.subtitle}>
-            Discover and trade new tokens instantly with real-time scanning and MEV protection
+            Discover all ERC-20 tokens on Base network with real-time metrics from Uniswap V3 and Aerodrome
           </p>
+        </div>
 
-          <div className={styles.features}>
-            <div className={styles.feature}>
-              <div className={styles.featureIcon}>🔍</div>
-              <h3>Token Scanner</h3>
-              <p>Real-time detection of new token launches on Base</p>
-              <Link to="/graph" className={styles.featureBtn}>
-                Open Scanner
-              </Link>
-            </div>
+        <div className={styles.tabs}>
+          <button
+            className={`${styles.tab} ${activeTab === 'all' ? styles.active : ''}`}
+            onClick={() => setActiveTab('all')}
+          >
+            All Tokens
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'trending' ? styles.active : ''}`}
+            onClick={() => setActiveTab('trending')}
+          >
+            Trending
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'new' ? styles.active : ''}`}
+            onClick={() => setActiveTab('new')}
+          >
+            New Tokens
+          </button>
+        </div>
 
-            <div className={styles.feature}>
-              <div className={styles.featureIcon}>💱</div>
-              <h3>Smart Trading</h3>
-              <p>Best prices across Uniswap V3 and Aerodrome DEXs</p>
-              <Link to="/trade" className={styles.featureBtn}>
-                Start Trading
-              </Link>
+        <div className={styles.tabContent}>
+          {activeTab === 'all' && (
+            <div className={styles.section}>
+              <TokenTable filter="all" limit={100} />
             </div>
+          )}
 
-            <div className={styles.feature}>
-              <div className={styles.featureIcon}>🛡️</div>
-              <h3>MEV Protection</h3>
-              <p>Simulate transactions before execution to prevent frontrunning</p>
-              <Link to="/trade" className={styles.featureBtn}>
-                Learn More
-              </Link>
+          {activeTab === 'trending' && (
+            <div className={styles.section}>
+              <TrendingTokensList />
             </div>
-          </div>
+          )}
 
-          <div className={styles.stats}>
-            <div className={styles.stat}>
-              <div className={styles.statValue}>2+</div>
-              <div className={styles.statLabel}>DEX Integrations</div>
+          {activeTab === 'new' && (
+            <div className={styles.section}>
+              <NewTokensList limit={50} />
             </div>
-            <div className={styles.stat}>
-              <div className={styles.statValue}>Base</div>
-              <div className={styles.statLabel}>Network</div>
-            </div>
-            <div className={styles.stat}>
-              <div className={styles.statValue}>0%</div>
-              <div className={styles.statLabel}>Platform Fees</div>
-            </div>
-          </div>
+          )}
+        </div>
+
+        <div className={styles.footerLinks}>
+          <Link to="/graph" className={styles.link}>
+            New Pools Scanner
+          </Link>
+          <Link to="/trade" className={styles.link}>
+            Trade Tokens
+          </Link>
         </div>
       </div>
     </div>

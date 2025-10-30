@@ -1,9 +1,13 @@
 import { useParams, Link } from 'react-router-dom';
-import { useTokenDetails, useHoneypotCheck } from '../../hooks/useTokens';
+import { useTokenDetails } from '../../hooks/useDiscoveredTokens';
+import { useHoneypotCheck } from '../../hooks/useTokens';
 import { useTokenPools } from '../../hooks/usePools';
 import { Wallet } from '@coinbase/onchainkit/wallet';
 import { Navigation } from '../../components/Navigation';
 import { InlineSwapWidget } from '../../components/InlineSwapWidget';
+import { useTokenFormatter } from '../../hooks/useTokenFormatter';
+import { getTokenLogoUrl } from 'lib/utils/tokenLogos';
+import type { TokenWithMetrics } from 'lib/types';
 import styles from './page.module.css';
 
 export default function TokenDetails() {
@@ -11,6 +15,7 @@ export default function TokenDetails() {
   const { data: token, isLoading, error } = useTokenDetails(address);
   const { data: honeypot } = useHoneypotCheck(address);
   const { data: pools } = useTokenPools(address);
+  const { formatCurrency } = useTokenFormatter();
 
   if (isLoading) {
     return (
@@ -36,16 +41,35 @@ export default function TokenDetails() {
         </header>
         <div className={styles.error}>
           <h2>Token not found</h2>
-          <Link to="/graph">Back to Scanner</Link>
+          <Link to="/">Back to Home</Link>
         </div>
       </div>
     );
   }
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return `$${(num / 1000000).toFixed(2)}M`;
-    if (num >= 1000) return `$${(num / 1000).toFixed(2)}K`;
-    return `$${num.toFixed(2)}`;
+  // Map EnrichedToken to display properties
+  const price = token.priceUSD || 0;
+  const marketCap = token.marketCap || 0;
+  const volume24h = token.volume24h || 0;
+  const liquidity = token.tvlUSD || 0;
+  const holderCount = typeof token.holderCount === 'number' ? token.holderCount : Number(token.holderCount);
+
+  // Convert EnrichedToken to TokenWithMetrics for InlineSwapWidget
+  const tokenForWidget: TokenWithMetrics = {
+    address: token.address,
+    name: token.name,
+    symbol: token.symbol,
+    decimals: token.decimals,
+    chainId: 8453,
+    logoURI: getTokenLogoUrl(address, 8453),
+    price: price,
+    priceChange24h: 0, // Not available in EnrichedToken
+    volume24h: volume24h,
+    liquidity: liquidity,
+    marketCap: marketCap,
+    holderCount: holderCount,
+    createdAt: token.createdAtTimestamp,
+    isVerified: token.isListed,
   };
 
   return (
@@ -58,11 +82,19 @@ export default function TokenDetails() {
       <div className={styles.content}>
         <div className={styles.tokenHeader}>
           <div className={styles.tokenIcon}>
-            {token.logoURI ? (
-              <img src={token.logoURI} alt={token.symbol} width={64} height={64} />
-            ) : (
-              <div className={styles.placeholder}>{token.symbol[0]}</div>
-            )}
+            <img 
+              src={getTokenLogoUrl(address, 8453)} 
+              alt={token.symbol} 
+              width={64} 
+              height={64}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const placeholder = target.nextElementSibling as HTMLElement;
+                if (placeholder) placeholder.style.display = 'flex';
+              }}
+            />
+            <div className={styles.placeholder} style={{ display: 'none' }}>{token.symbol[0]}</div>
           </div>
           <div>
             <h1 className={styles.tokenName}>{token.name}</h1>
@@ -83,43 +115,42 @@ export default function TokenDetails() {
             </ul>
           </div>
         )}
+
+         {/* Inline Swap Widget */}
+         <InlineSwapWidget targetToken={tokenForWidget} />
         
         <div className={styles.stats}>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Price</div>
             <div className={styles.statValue}>
-              {token.price > 0 ? `$${token.price.toFixed(6)}` : 'N/A'}
-            </div>
-            <div className={token.priceChange24h >= 0 ? styles.positive : styles.negative}>
-              {token.priceChange24h >= 0 ? '+' : ''}
-              {token.priceChange24h.toFixed(2)}% (24h)
+              {price > 0 ? `$${price.toFixed(6)}` : 'N/A'}
             </div>
           </div>
 
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Market Cap</div>
-            <div className={styles.statValue}>{formatNumber(token.marketCap)}</div>
+            <div className={styles.statValue}>{marketCap > 0 ? formatCurrency(marketCap) : 'N/A'}</div>
           </div>
 
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Volume (24h)</div>
-            <div className={styles.statValue}>{formatNumber(token.volume24h)}</div>
+            <div className={styles.statValue}>{volume24h > 0 ? formatCurrency(volume24h) : 'N/A'}</div>
           </div>
 
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Liquidity</div>
-            <div className={styles.statValue}>{formatNumber(token.liquidity)}</div>
+            <div className={styles.statLabel}>Liquidity (TVL)</div>
+            <div className={styles.statValue}>{liquidity > 0 ? formatCurrency(liquidity) : 'N/A'}</div>
           </div>
 
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Holders</div>
-            <div className={styles.statValue}>{token.holderCount.toLocaleString()}</div>
+            <div className={styles.statValue}>{holderCount > 0 ? holderCount.toLocaleString() : 'N/A'}</div>
           </div>
 
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Verified</div>
+            <div className={styles.statLabel}>Status</div>
             <div className={styles.statValue}>
-              {token.isVerified ? '✓' : '✗'}
+              {token.isListed ? '✓ Listed' : 'Unlisted'}
             </div>
           </div>
         </div>
@@ -142,8 +173,7 @@ export default function TokenDetails() {
           )}
         </div>
 
-        {/* Inline Swap Widget */}
-        <InlineSwapWidget targetToken={token} />
+       
 
         <div className={styles.actions}>
           <a

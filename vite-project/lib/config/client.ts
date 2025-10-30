@@ -8,33 +8,76 @@ declare global {
   }
 }
 
-// Validate environment variables - Alchemy API key is optional
-const hasAlchemyKey = import.meta.env.VITE_ALCHEMY_API_KEY && import.meta.env.VITE_ALCHEMY_API_KEY !== '';
+// Helper to detect if running in browser or Node.js
+const isBrowser = typeof window !== 'undefined';
+
+// Get environment variables (works in both browser and Node.js)
+function getEnvVar(key: string): string | undefined {
+  try {
+    // Always check process.env first for Node.js/serverless context
+    if (typeof process !== 'undefined' && process.env) {
+      const nodeValue = process.env[key];
+      if (nodeValue) return nodeValue;
+    }
+    
+    // Try Vite environment variables (browser only)
+    if (isBrowser && typeof import.meta !== 'undefined' && import.meta.env) {
+      try {
+        const value = import.meta.env[key];
+        if (value) return value as string;
+      } catch (e) {
+        // Ignore import.meta errors
+      }
+    }
+  } catch (e) {
+    // Ignore all errors
+  }
+  
+  return undefined;
+}
+
+// Get Alchemy API key
+const alchemyApiKey = getEnvVar('VITE_ALCHEMY_API_KEY');
+
+// Force use of public RPC for discovery (to avoid Alchemy free tier limits on eth_getLogs)
+// Alchemy free tier only allows 10 block ranges for eth_getLogs
+const FORCE_PUBLIC_RPC = true;
 
 // Use Alchemy API with proper setup
 // According to Alchemy docs: 
 // 1. Use HTTPS for standard JSON-RPC requests (eth_call, eth_getBalance, etc.)
 // 2. WebSockets are ONLY for subscriptions (eth_subscribe) - not for standard reads
 // 3. Filter-based watching (viem's watchContractEvent) should be avoided
-const useAlchemy = true; // Now enabled after fixing event watching
+const useAlchemy = !FORCE_PUBLIC_RPC; // Disable for discovery
 
-const rpcUrl = (hasAlchemyKey && useAlchemy)
-  ? `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`
-  : 'https://base.drpc.org'; // Public Base RPC (no restrictions)
+// Set RPC URL - always fallback to public RPC
+// Validate the API key is actually valid
+const isValidAlchemyKey = !FORCE_PUBLIC_RPC && alchemyApiKey && 
+  alchemyApiKey !== '' && 
+  alchemyApiKey !== 'xxxx' && 
+  alchemyApiKey.length > 20;
 
-console.log((hasAlchemyKey && useAlchemy)
-  ? 'Using Alchemy API' 
-  : hasAlchemyKey 
-    ? 'ℹ️  Using public RPC (Alchemy key available but not enabled)' 
-    : 'ℹ️  Using public Base RPC (add VITE_ALCHEMY_API_KEY to .env)');
+// Ensure we always have a valid RPC URL
+let rpcUrl = 'https://base.drpc.org'; // Default: Public Base RPC
 
-if (hasAlchemyKey && useAlchemy) {
-  console.log('Using HTTPS ');
+if (isValidAlchemyKey && useAlchemy) {
+  rpcUrl = `https://base-mainnet.g.alchemy.com/v2/${alchemyApiKey}`;
+}
+
+// Validate the URL before creating the client
+if (!rpcUrl || typeof rpcUrl !== 'string' || !rpcUrl.startsWith('http')) {
+  console.error('Invalid RPC URL, falling back to public Base RPC');
+  rpcUrl = 'https://base.drpc.org';
+}
+
+// Log which RPC we're using
+if (!isBrowser) {
+  console.log(`[RPC] Using ${FORCE_PUBLIC_RPC ? 'public Base RPC (forced)' : (isValidAlchemyKey ? 'Alchemy API' : 'public Base RPC')}`);
 }
 
 export const publicClient = createPublicClient({
   chain: base,
-  transport: http(rpcUrl, {
+  transport: http(rpcUrl as string, {
     fetchOptions: {
       headers: {
         'Accept': 'application/json',
@@ -59,9 +102,14 @@ export function getWalletClient() {
   });
 }
 
-// Alchemy API helpers
+// Alchemy API helpers (browser only)
 export const alchemyFetch = async (endpoint: string, options?: RequestInit) => {
-  const baseUrl = `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`;
+  const apiKey = getEnvVar('VITE_ALCHEMY_API_KEY');
+  if (!apiKey) {
+    throw new Error('Alchemy API key not configured. Add VITE_ALCHEMY_API_KEY to .env');
+  }
+  
+  const baseUrl = `https://base-mainnet.g.alchemy.com/v2/${apiKey}`;
   
   const response = await fetch(`${baseUrl}${endpoint}`, {
     headers: {
@@ -78,9 +126,9 @@ export const alchemyFetch = async (endpoint: string, options?: RequestInit) => {
   return response.json();
 };
 
-// JSON-RPC helper for Alchemy
+// JSON-RPC helper for Alchemy (browser only)
 export const alchemyRPC = async (method: string, params: unknown[] = []) => {
-  const apiKey = import.meta.env.VITE_ALCHEMY_API_KEY;
+  const apiKey = getEnvVar('VITE_ALCHEMY_API_KEY');
   
   if (!apiKey || apiKey === '') {
     throw new Error('Alchemy API key not configured. Add VITE_ALCHEMY_API_KEY to .env');

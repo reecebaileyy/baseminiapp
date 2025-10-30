@@ -29,7 +29,7 @@ export function useNewPools(options?: {
             orderBy: $orderBy
             orderDirection: $orderDirection
             where: { liquidity_gt: "0" }
-          ) {
+          ) @source(name: "uniswap-v4-base-3") {
             id
             createdAtTimestamp
             createdAtBlockNumber
