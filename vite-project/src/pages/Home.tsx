@@ -27,7 +27,7 @@ export default function Home() {
         <div className={styles.header}>
           <h1 className={styles.title}>Token Discovery Platform</h1>
           <p className={styles.subtitle}>
-            Discover all ERC-20 tokens on Base network with real-time metrics from Uniswap and Aerodrome
+            Discover ERC-20 tokens on Base network with real-time metrics from Uniswap and Aerodrome
           </p>
         </div>
 
