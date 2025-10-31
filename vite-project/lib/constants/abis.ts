@@ -228,3 +228,44 @@ export const AERODROME_ROUTER_ABI = [
   },
 ] as const;
 
+// Minimal Uniswap V2 Factory ABI (PairCreated event + getPair)
+export const UNISWAP_V2_FACTORY_ABI = [
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'token0', type: 'address' },
+      { indexed: true, name: 'token1', type: 'address' },
+      { indexed: false, name: 'pair', type: 'address' },
+      { indexed: false, name: '', type: 'uint256' },
+    ],
+    name: 'PairCreated',
+    type: 'event',
+  },
+  {
+    inputs: [
+      { name: 'tokenA', type: 'address' },
+      { name: 'tokenB', type: 'address' },
+    ],
+    name: 'getPair',
+    outputs: [{ name: 'pair', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
+// Minimal Uniswap V4 Factory/Manager ABI: PoolCreated (subject to change; optional)
+export const UNISWAP_V4_FACTORY_ABI = [
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'currency0', type: 'address' },
+      { indexed: true, name: 'currency1', type: 'address' },
+      { indexed: true, name: 'fee', type: 'uint24' },
+      { indexed: false, name: 'hooks', type: 'address' },
+      { indexed: false, name: 'pool', type: 'address' },
+    ],
+    name: 'PoolCreated',
+    type: 'event',
+  },
+] as const;
+

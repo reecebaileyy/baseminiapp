@@ -14,9 +14,14 @@ function isKVConfigured(): boolean {
 const KEYS = {
   TOKEN: (address: string) => `token:${address.toLowerCase()}`,
   TOKENS_ALL: 'tokens:all',
-  ENRICHED: (address: string) => `tokens:enriched:${address.toLowerCase()}`,
+  ENRICHED: (address: string) => `token:${address.toLowerCase()}:enriched`,
+  ENRICHED_INDEX: 'cache:tokens:index',
   TRENDING: 'tokens:trending',
   PROGRESS: 'discovery:progress',
+  DISCOVERY_LAST: 'discovery:lastBlockScanned',
+  DISCOVERY_LOCK: 'discovery:lock',
+  HOLDER_COUNT: (address: string) => `holderCount:${address.toLowerCase()}`,
+  HOLDER_COUNT_FAIL: (address: string) => `holderCount:fail:${address.toLowerCase()}`,
 } as const;
 
 /**
@@ -111,12 +116,19 @@ export async function tokenExists(address: string): Promise<boolean> {
  */
 export async function saveEnrichedToken(
   address: string,
-  enriched: Partial<EnrichedToken>,
-  ttlSeconds: number = 60
+  enriched: Partial<EnrichedToken> & { sourceDEX?: any },
+  ttlSeconds: number = 900
 ): Promise<void> {
   try {
     const key = KEYS.ENRICHED(address);
-    await kv.setex(key, ttlSeconds, enriched);
+    const payload = {
+      data: enriched,
+      cachedAt: Date.now(),
+      ttlSecs: ttlSeconds,
+    };
+    await kv.setex(key, ttlSeconds, payload);
+    // Index this address for status counting
+    await kv.sadd(KEYS.ENRICHED_INDEX, address.toLowerCase());
   } catch (error) {
     console.error(`Error saving enriched token ${address}:`, error);
   }
@@ -127,11 +139,12 @@ export async function saveEnrichedToken(
  */
 export async function getEnrichedToken(
   address: string
-): Promise<Partial<EnrichedToken> | null> {
+): Promise<(Partial<EnrichedToken> & { cachedAt?: number; ttlSecs?: number }) | null> {
   try {
     const key = KEYS.ENRICHED(address);
-    const enriched = await kv.get<Partial<EnrichedToken>>(key);
-    return enriched;
+    const payload = await kv.get<{ data: Partial<EnrichedToken>; cachedAt: number; ttlSecs: number }>(key);
+    if (!payload) return null;
+    return { ...payload.data, cachedAt: payload.cachedAt, ttlSecs: payload.ttlSecs } as any;
   } catch (error) {
     console.error(`Error getting enriched token ${address}:`, error);
     return null;
@@ -179,6 +192,13 @@ export async function updateDiscoveryProgress(
       lastScanTimestamp: Date.now(),
     };
     await kv.set(KEYS.PROGRESS, progress);
+    // Mirror to the detailed lastBlockScanned key for status
+    await kv.set(KEYS.DISCOVERY_LAST, {
+      blockNumber: lastScannedBlock,
+      timestamp: progress.lastScanTimestamp,
+      totalTokens,
+      lastBatchDurationMs: null,
+    });
   } catch (error) {
     console.error('Error updating discovery progress:', error);
   }
@@ -194,6 +214,97 @@ export async function getDiscoveryProgress(): Promise<TokenDiscoveryProgress | n
   } catch (error) {
     console.error('Error getting discovery progress:', error);
     return null;
+  }
+}
+
+// Holder count caching helpers
+export async function getCachedHolderCount(address: string): Promise<number | null> {
+  try {
+    const key = KEYS.HOLDER_COUNT(address);
+    const cached = await kv.get<number>(key);
+    if (cached !== null && cached !== undefined) {
+      console.log(`[holders][hit] ${address} -> ${cached}`);
+      return cached;
+    }
+    console.log(`[holders][miss] ${address}`);
+    return null;
+  } catch (error) {
+    console.error(`Error getting cached holder count for ${address}:`, error);
+    return null;
+  }
+}
+
+export async function saveHolderCount(address: string, count: number, ttlSeconds: number): Promise<void> {
+  try {
+    const key = KEYS.HOLDER_COUNT(address);
+    await kv.setex(key, ttlSeconds, count);
+    console.log(`[holders][save] ${address} -> ${count} (ttl=${ttlSeconds}s)`);
+  } catch (error) {
+    console.error(`Error saving holder count for ${address}:`, error);
+  }
+}
+
+export async function markHolderCountFailed(address: string, ttlSeconds: number = 300): Promise<void> {
+  try {
+    await kv.setex(KEYS.HOLDER_COUNT_FAIL(address), ttlSeconds, Date.now());
+  } catch {}
+}
+
+export async function wasHolderCountRecentlyFailed(address: string): Promise<boolean> {
+  try {
+    const exists = await kv.exists(KEYS.HOLDER_COUNT_FAIL(address));
+    return exists === 1;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteHolderCount(address: string): Promise<void> {
+  try {
+    await kv.del(KEYS.HOLDER_COUNT(address));
+  } catch {}
+}
+
+export async function deleteEnriched(address: string): Promise<void> {
+  try {
+    await kv.del(KEYS.ENRICHED(address));
+  } catch {}
+}
+
+// Detailed discovery state helpers
+export async function getDiscoveryState(): Promise<{ blockNumber: number; timestamp: number; totalTokens: number; lastBatchDurationMs: number | null } | null> {
+  try {
+    const state = await kv.get<{ blockNumber: number; timestamp: number; totalTokens: number; lastBatchDurationMs: number | null }>(KEYS.DISCOVERY_LAST);
+    return state || null;
+  } catch (error) {
+    console.error('Error getting discovery state:', error);
+    return null;
+  }
+}
+
+export async function setDiscoveryState(state: { blockNumber: number; timestamp: number; totalTokens: number; lastBatchDurationMs: number | null }): Promise<void> {
+  try {
+    await kv.set(KEYS.DISCOVERY_LAST, state);
+  } catch (error) {
+    console.error('Error setting discovery state:', error);
+  }
+}
+
+export async function acquireDiscoveryLock(ttlSeconds: number = 90): Promise<boolean> {
+  try {
+    const result = await kv.set(KEYS.DISCOVERY_LOCK, Date.now(), { nx: true, ex: ttlSeconds });
+    return result === 'OK';
+  } catch (error) {
+    console.error('Error acquiring discovery lock:', error);
+    return false;
+  }
+}
+
+export async function releaseDiscoveryLock(): Promise<void> {
+  try {
+    await kv.del(KEYS.DISCOVERY_LOCK);
+  } catch (error) {
+    console.error('Error releasing discovery lock:', error);
   }
 }
 

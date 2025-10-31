@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAllTokens } from '../lib/db/kv.js';
-import { getEnrichedTokenData, enrichTokenWithSubgraphData } from '../lib/services/enrichment.js';
-import type { TokenQueryParams, EnrichedToken, PaginatedResponse } from '../lib/types/index.js';
+import { getEnrichedTokenData } from '../lib/services/enrichment.js';
+import type { TokenQueryParams, PaginatedResponse } from '../lib/types/index.js';
 
 /**
  * GET /api/tokens
@@ -175,6 +175,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       isListed: token.isListed,
       sourceDEX: token.sourceDEX,
       poolCount: token.poolCount,
+      cachedAt: (token as any).cachedAt || null,
     }));
 
     const response: PaginatedResponse<typeof formatted[0]> = {

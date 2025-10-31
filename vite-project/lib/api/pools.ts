@@ -3,7 +3,6 @@ import {
   getPoolLiquidity,
   getTokenPools,
 } from '../services/dex/uniswap-v3';
-import { getRecentPools, startPoolScanner } from '../services/scanner';
 import type { LiquidityPool } from '../types';
 
 /**
@@ -39,6 +38,7 @@ export const poolsApi = {
    * Get recently created pools
    */
   getRecentPools: async (blocksToScan?: number): Promise<LiquidityPool[]> => {
+    const { getRecentPools } = await import('../services/scanner');
     return getRecentPools(blocksToScan);
   },
 
@@ -46,7 +46,14 @@ export const poolsApi = {
    * Start watching for new pools
    */
   watchNewPools: (callback: (pool: LiquidityPool) => void): (() => void) => {
-    return startPoolScanner(callback);
+    try {
+      // Lazy-load to avoid bundling server-leaning code in client
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const mod = require('../services/scanner') as { startPoolScanner: (cb: (pool: LiquidityPool) => void) => () => void };
+      return mod.startPoolScanner(callback);
+    } catch (e) {
+      return () => {};
+    }
   },
 };
 

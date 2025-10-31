@@ -1,9 +1,10 @@
 import { publicClient } from '../config/client.js';
 import { UNISWAP_V3_ADDRESSES, AERODROME_ADDRESSES } from '../constants/contracts.js';
-import { UNISWAP_V3_FACTORY_ABI, AERODROME_FACTORY_ABI, ERC20_ABI } from '../constants/abis.js';
-import { saveToken, getAllTokenAddresses, updateDiscoveryProgress, getDiscoveryProgress } from '../db/kv.js';
+import { UNISWAP_V3_FACTORY_ABI, AERODROME_FACTORY_ABI, UNISWAP_V2_FACTORY_ABI, UNISWAP_V4_FACTORY_ABI, ERC20_ABI } from '../constants/abis.js';
+import { saveToken, getAllTokenAddresses, updateDiscoveryProgress, getDiscoveryProgress, acquireDiscoveryLock, releaseDiscoveryLock, getDiscoveryState, setDiscoveryState } from '../db/kv.js';
 import type { DiscoveredToken } from '../types/index.js';
-import { getAddress, formatUnits } from 'viem';
+import { getAddress } from 'viem';
+import { withRetry, withTimeout, sleep } from '../utils/retry.js';
 
 /**
  * Token Discovery Service
@@ -13,9 +14,9 @@ import { getAddress, formatUnits } from 'viem';
 
 interface FactoryConfig {
   address: `0x${string}`;
-  abi: typeof UNISWAP_V3_FACTORY_ABI | typeof AERODROME_FACTORY_ABI;
+  abi: typeof UNISWAP_V3_FACTORY_ABI | typeof AERODROME_FACTORY_ABI | typeof UNISWAP_V2_FACTORY_ABI | typeof UNISWAP_V4_FACTORY_ABI;
   eventName: string;
-  source: 'uniswap-v3' | 'aerodrome';
+  source: 'uniswap-v2' | 'uniswap-v3' | 'uniswap-v4' | 'aerodrome';
 }
 
 const FACTORY_CONFIGS: FactoryConfig[] = [
@@ -33,6 +34,28 @@ const FACTORY_CONFIGS: FactoryConfig[] = [
   },
 ];
 
+// Optionally include Uniswap V2 and V4 if configured via env
+try {
+  const v2Factory = process.env.UNISWAP_V2_FACTORY as `0x${string}` | undefined;
+  if (v2Factory) {
+    FACTORY_CONFIGS.push({
+      address: v2Factory,
+      abi: UNISWAP_V2_FACTORY_ABI,
+      eventName: 'PairCreated',
+      source: 'uniswap-v2',
+    });
+  }
+  const v4Factory = process.env.UNISWAP_V4_FACTORY as `0x${string}` | undefined;
+  if (v4Factory) {
+    FACTORY_CONFIGS.push({
+      address: v4Factory,
+      abi: UNISWAP_V4_FACTORY_ABI,
+      eventName: 'PoolCreated',
+      source: 'uniswap-v4',
+    });
+  }
+} catch {}
+
 /**
  * Scan factory events in a block range
  */
@@ -44,7 +67,7 @@ export async function scanFactoryEvents(
   eventName: string
 ): Promise<any[]> {
   try {
-    const logs = await publicClient.getLogs({
+    const logs = await withRetry(() => publicClient.getLogs({
       address: factoryAddress,
       event: {
         type: 'event',
@@ -53,7 +76,7 @@ export async function scanFactoryEvents(
       } as any,
       fromBlock,
       toBlock,
-    });
+    }));
 
     console.log(`Found ${logs.length} ${eventName} events between blocks ${fromBlock} and ${toBlock}`);
     return logs;
@@ -93,33 +116,33 @@ export async function validateERC20(tokenAddress: string): Promise<{
 } | null> {
   try {
     const [name, symbol, decimals, totalSupply] = await Promise.all([
-      publicClient.readContract({
+      withRetry(() => (publicClient as any).readContract({
         address: tokenAddress as `0x${string}`,
         abi: ERC20_ABI as any,
         functionName: 'name',
-      }),
-      publicClient.readContract({
+      })),
+      withRetry(() => (publicClient as any).readContract({
         address: tokenAddress as `0x${string}`,
         abi: ERC20_ABI as any,
         functionName: 'symbol',
-      }),
-      publicClient.readContract({
+      })),
+      withRetry(() => (publicClient as any).readContract({
         address: tokenAddress as `0x${string}`,
         abi: ERC20_ABI as any,
         functionName: 'decimals',
-      }),
-      publicClient.readContract({
+      })),
+      withRetry(() => (publicClient as any).readContract({
         address: tokenAddress as `0x${string}`,
         abi: ERC20_ABI as any,
         functionName: 'totalSupply',
-      }),
+      })),
     ]);
 
     return {
       name: name as string,
       symbol: symbol as string,
       decimals: decimals as number,
-      totalSupply: totalSupply.toString(),
+      totalSupply: (totalSupply as any)?.toString?.() ?? String(totalSupply as any),
     };
   } catch (error) {
     console.error(`Error validating ERC-20 token ${tokenAddress}:`, error);
@@ -132,7 +155,7 @@ export async function validateERC20(tokenAddress: string): Promise<{
  * Note: Finding the deployer requires scanning contract creation transactions which is complex
  * For now, we return a placeholder since deployer info isn't critical for discovery
  */
-export async function getTokenDeployer(tokenAddress: string): Promise<string> {
+export async function getTokenDeployer(_tokenAddress: string): Promise<string> {
   // TODO: Implement proper deployer detection by scanning ContractCreation events
   // For now, return placeholder to avoid expensive RPC calls
   return '0x0000000000000000000000000000000000000000';
@@ -143,7 +166,7 @@ export async function getTokenDeployer(tokenAddress: string): Promise<string> {
  */
 async function getBlockInfo(blockNumber: bigint): Promise<{ number: number; timestamp: number }> {
   try {
-    const block = await publicClient.getBlock({ blockNumber });
+    const block = await withRetry(() => publicClient.getBlock({ blockNumber }));
     return {
       number: Number(block.number),
       timestamp: Number(block.timestamp),
@@ -158,111 +181,111 @@ async function getBlockInfo(blockNumber: bigint): Promise<{ number: number; time
  * Discover new tokens from factory events
  */
 export async function discoverNewTokens(blocksToScan: number = 100000): Promise<number> {
-  console.log(`Starting token discovery - scanning ${blocksToScan} blocks`);
+  console.log(`Starting token discovery`);
+
+  const BATCH_SIZE = Number(process.env.DISCOVERY_BATCH_SIZE || 1000);
+  const BATCH_TIMEOUT_MS = Number(process.env.DISCOVERY_BATCH_TIMEOUT_MS || 15000);
+  const SLEEP_MS = Number(process.env.DISCOVERY_SLEEP_MS || 400);
+
+  let tokensDiscoveredInBatch = 0;
+
+  const lockTtl = 90; // 60–120s window
+  const gotLock = await acquireDiscoveryLock(lockTtl);
+  if (!gotLock) {
+    console.log('Discovery already running (lock present). Exiting.');
+    return 0;
+  }
 
   try {
-    // Get current block
-    const currentBlock = await publicClient.getBlockNumber();
-    const fromBlock = currentBlock - BigInt(blocksToScan);
-    
-    console.log(`Scanning from block ${fromBlock} to ${currentBlock}`);
+    const latestBlock = await withRetry(() => publicClient.getBlockNumber());
 
-    // Get existing tokens to avoid duplicates
+    // Determine starting block
+    const state = await getDiscoveryState();
+    const fallbackFrom = latestBlock - BigInt(Math.min(blocksToScan, BATCH_SIZE));
+    const fromBlock = state ? BigInt(state.blockNumber + 1) : fallbackFrom;
+    const toBlock = fromBlock + BigInt(BATCH_SIZE - 1) > latestBlock ? latestBlock : fromBlock + BigInt(BATCH_SIZE - 1);
+
+    console.log(`Scanning blocks ${fromBlock} → ${toBlock} (latest ${latestBlock})`);
+
     const existingTokens = new Set(await getAllTokenAddresses());
     const discoveredTokens: DiscoveredToken[] = [];
-    let totalNewTokens = 0;
 
-    // Scan each factory
-    for (const config of FACTORY_CONFIGS) {
-      console.log(`Scanning ${config.source} factory...`);
+    const startTime = Date.now();
+    await withTimeout(
+      (async () => {
+        for (const config of FACTORY_CONFIGS) {
+          const logs = await scanFactoryEvents(
+            config.address,
+            fromBlock,
+            toBlock,
+            config.abi,
+            config.eventName
+          );
 
-      // Get logs in batches to avoid hitting RPC limits
-      // Use smaller batches for public RPC (some providers have limits)
-      const BATCH_SIZE = 10;
-      let scanned = 0;
+          const tokenAddresses = extractTokensFromLogs(logs);
+          for (const address of tokenAddresses) {
+            const lowerAddress = address.toLowerCase();
+            if (existingTokens.has(lowerAddress)) continue;
 
-      for (let batchFrom = fromBlock; batchFrom <= currentBlock; batchFrom += BigInt(BATCH_SIZE)) {
-        const batchTo = batchFrom + BigInt(BATCH_SIZE) > currentBlock 
-          ? currentBlock 
-          : batchFrom + BigInt(BATCH_SIZE);
+            const validation = await validateERC20(address);
+            if (!validation) continue;
 
-        const logs = await scanFactoryEvents(
-          config.address,
-          batchFrom,
-          batchTo,
-          config.abi,
-          config.eventName
-        );
+            const deployer = await getTokenDeployer(address);
+            const firstLog = logs[0];
+            const blockInfo = firstLog
+              ? await getBlockInfo(firstLog.blockNumber)
+              : { number: Number(toBlock), timestamp: Math.floor(Date.now() / 1000) };
 
-        const tokenAddresses = extractTokensFromLogs(logs);
+            const token: DiscoveredToken = {
+              address: lowerAddress,
+              name: validation.name,
+              symbol: validation.symbol,
+              decimals: validation.decimals,
+              totalSupply: validation.totalSupply,
+              deployer,
+              createdAtBlock: blockInfo.number,
+              createdAtTimestamp: blockInfo.timestamp,
+              discoveredFrom: config.source as any,
+              lastUpdated: Date.now(),
+            };
 
-        // Filter out existing tokens and validate new ones
-        for (const address of tokenAddresses) {
-          const lowerAddress = address.toLowerCase();
-
-          if (existingTokens.has(lowerAddress)) {
-            console.log(`Token ${address} already exists, skipping`);
-            continue;
+            discoveredTokens.push(token);
+            existingTokens.add(lowerAddress);
           }
-
-          // Validate ERC-20 compliance
-          const validation = await validateERC20(address);
-          if (!validation) {
-            console.log(`Token ${address} failed ERC-20 validation, skipping`);
-            continue;
-          }
-
-          // Get deployer
-          const deployer = await getTokenDeployer(address);
-
-          // Get block info from the first log
-          const firstLog = logs[0];
-          const blockInfo = firstLog
-            ? await getBlockInfo(firstLog.blockNumber)
-            : { number: Number(currentBlock), timestamp: Math.floor(Date.now() / 1000) };
-
-          const token: DiscoveredToken = {
-            address: lowerAddress,
-            name: validation.name,
-            symbol: validation.symbol,
-            decimals: validation.decimals,
-            totalSupply: validation.totalSupply,
-            deployer: deployer,
-            createdAtBlock: blockInfo.number,
-            createdAtTimestamp: blockInfo.timestamp,
-            discoveredFrom: config.source,
-            lastUpdated: Date.now(),
-          };
-
-          discoveredTokens.push(token);
-          existingTokens.add(lowerAddress);
-          totalNewTokens++;
-
-          console.log(`Discovered new token: ${token.symbol} (${token.address}) from ${config.source}`);
         }
+      })(),
+      BATCH_TIMEOUT_MS,
+      'discovery batch'
+    );
 
-        scanned += BATCH_SIZE;
-        if (scanned % 100 === 0) {
-          console.log(`Scanned ${scanned}/${blocksToScan} blocks...`);
-        }
-      }
-    }
-
-    // Save all discovered tokens
-    console.log(`Saving ${discoveredTokens.length} new tokens to KV...`);
+    // Persist discovered tokens
     for (const token of discoveredTokens) {
       await saveToken(token);
     }
 
-    // Update progress
-    const totalTokens = await getAllTokenAddresses();
-    await updateDiscoveryProgress(Number(currentBlock), totalTokens.length);
+    tokensDiscoveredInBatch = discoveredTokens.length;
 
-    console.log(`Token discovery complete. Found ${totalNewTokens} new tokens.`);
-    return totalNewTokens;
+    // Update progress state keys
+    const totalTokensCount = (await getAllTokenAddresses()).length;
+    const durationMs = Date.now() - startTime;
+    await updateDiscoveryProgress(Number(toBlock), totalTokensCount);
+    await setDiscoveryState({
+      blockNumber: Number(toBlock),
+      timestamp: Date.now(),
+      totalTokens: totalTokensCount,
+      lastBatchDurationMs: durationMs,
+    });
+
+    // Sleep to respect limits
+    await sleep(SLEEP_MS);
+
+    console.log(`Discovery batch complete. Found ${tokensDiscoveredInBatch} new tokens.`);
+    return tokensDiscoveredInBatch;
   } catch (error) {
     console.error('Error during token discovery:', error);
     throw error;
+  } finally {
+    await releaseDiscoveryLock();
   }
 }
 
@@ -270,6 +293,8 @@ export async function discoverNewTokens(blocksToScan: number = 100000): Promise<
  * Get the last scanned block from progress
  */
 export async function getLastScannedBlock(): Promise<number> {
+  const state = await getDiscoveryState();
+  if (state?.blockNumber) return state.blockNumber;
   const progress = await getDiscoveryProgress();
   return progress?.lastScannedBlock || 0;
 }
@@ -278,20 +303,7 @@ export async function getLastScannedBlock(): Promise<number> {
  * Scan only new blocks since last discovery
  */
 export async function discoverNewTokensIncremental(blocksToScan: number = 1000): Promise<number> {
-  const lastScanned = await getLastScannedBlock();
-  const currentBlock = await publicClient.getBlockNumber();
-  
-  if (lastScanned === 0 || Number(currentBlock) - lastScanned > blocksToScan) {
-    // Full scan
-    return await discoverNewTokens(blocksToScan);
-  } else {
-    // Incremental scan from lastScanned to current
-    const blocksRemaining = Number(currentBlock) - lastScanned;
-    console.log(`Incremental scan: ${blocksRemaining} blocks since last scan`);
-    
-    // Use the existing discoverNewTokens but only process the range
-    // For now, just do a full scan - can optimize later
-    return await discoverNewTokens(Math.min(blocksToScan, blocksRemaining));
-  }
+  // For serverless safety, run a single batch and rely on KV state to continue next run
+  return discoverNewTokens(blocksToScan);
 }
 

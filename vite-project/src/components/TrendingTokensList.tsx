@@ -3,6 +3,9 @@ import { useTokenFormatter } from '../hooks/useTokenFormatter';
 import { getTokenLogoUrl } from 'lib/utils/tokenLogos';
 import { Link } from 'react-router-dom';
 import styles from './TrendingTokensList.module.css';
+import { RefreshTokenButton } from './RefreshTokenButton';
+import { useState } from 'react';
+import { useBulkRefresh } from '../hooks/useBulkRefresh';
 
 interface TrendingTokensListProps {
   limit?: number;
@@ -11,8 +14,25 @@ interface TrendingTokensListProps {
 export function TrendingTokensList({ limit = 10 }: TrendingTokensListProps) {
   const { data: tokens, isLoading, error, refetch, isFetching } = useTrendingTokens();
   const { formatCurrency } = useTokenFormatter();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { refreshMany, isRefreshing: isBulkRefreshing } = useBulkRefresh();
 
   const handleRefresh = () => {
+    refetch();
+  };
+
+  const toggle = (addr: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(addr)) next.delete(addr); else next.add(addr);
+      return next;
+    });
+  };
+
+  const refreshSelected = async () => {
+    if (!tokens) return;
+    await refreshMany(Array.from(selected));
+    setSelected(new Set());
     refetch();
   };
 
@@ -69,6 +89,16 @@ export function TrendingTokensList({ limit = 10 }: TrendingTokensListProps) {
           </svg>
           {isFetching ? 'Refreshing...' : 'Refresh'}
         </button>
+        {selected.size > 0 && (
+          <button
+            onClick={refreshSelected}
+            disabled={isBulkRefreshing}
+            className={styles.refreshButton}
+            title="Refresh selected tokens"
+          >
+            {isBulkRefreshing ? 'Refreshing…' : `Refresh Selected (${selected.size})`}
+          </button>
+        )}
       </div>
       <div className={styles.tokensGrid}>
         {tokens.slice(0, limit).map((token, index) => (
@@ -76,6 +106,7 @@ export function TrendingTokensList({ limit = 10 }: TrendingTokensListProps) {
             <div className={styles.rank}>#{index + 1}</div>
             
             <div className={styles.tokenHeader}>
+              <input type="checkbox" checked={selected.has(token.address)} onChange={() => toggle(token.address)} />
               <div className={styles.tokenIcon}>
                 <img 
                   src={getTokenLogoUrl(token.address, 8453)} 
@@ -133,6 +164,9 @@ export function TrendingTokensList({ limit = 10 }: TrendingTokensListProps) {
 
             <div className={styles.tokenAddress}>
               <span className={styles.addressValue}>{token.address}</span>
+              <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                <RefreshTokenButton address={token.address} />
+              </div>
             </div>
           </Link>
         ))}

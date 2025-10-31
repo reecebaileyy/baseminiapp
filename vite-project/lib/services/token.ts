@@ -1,7 +1,11 @@
-import { publicClient } from '../config/client';
-import { ERC20_ABI } from '../constants/abis';
+import { serverPublicClient } from '../config/client.js';
+import { ERC20_ABI } from '../constants/abis.js';
 import type { Token } from '../types';
 import { formatUnits } from 'viem';
+import { getCachedHolderCount, saveHolderCount, wasHolderCountRecentlyFailed, markHolderCountFailed } from '../db/kv.js';
+import { withRetry, withTimeout } from '../utils/retry.js';
+import { createPublicClient, http } from 'viem';
+import { base } from 'viem/chains';
 
 /**
  * Fetch basic token information from contract
@@ -9,17 +13,17 @@ import { formatUnits } from 'viem';
 export async function getTokenInfo(tokenAddress: string): Promise<Token> {
   try {
     const [name, symbol, decimals] = await Promise.all([
-      publicClient.readContract({
+      (serverPublicClient as any).readContract({
         address: tokenAddress as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'name',
       }),
-      publicClient.readContract({
+      (serverPublicClient as any).readContract({
         address: tokenAddress as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'symbol',
       }),
-      publicClient.readContract({
+      (serverPublicClient as any).readContract({
         address: tokenAddress as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'decimals',
@@ -49,14 +53,14 @@ export async function getTokenBalance(
   try {
     // Handle native ETH (no contract address)
     if (tokenAddress === '0x0000000000000000000000000000000000000000') {
-      const balance = await publicClient.getBalance({
+      const balance = await (serverPublicClient as any).getBalance({
         address: walletAddress as `0x${string}`,
       });
       return formatUnits(balance, 18); // ETH has 18 decimals
     }
 
     // Handle ERC-20 tokens
-    const balance = await publicClient.readContract({
+    const balance = await (serverPublicClient as any).readContract({
       address: tokenAddress as `0x${string}`,
       abi: ERC20_ABI,
       functionName: 'balanceOf',
@@ -76,22 +80,77 @@ export async function getTokenBalance(
  * Note: Free tier doesn't support this, returns placeholder
  */
 export async function getTokenHolderCount(tokenAddress: string): Promise<number> {
+  const addr = tokenAddress.toLowerCase();
+  const ttl = Number(process.env.HOLDERCOUNT_TTL_SECS || 1800); // 30m default
+  const alchemyHttpUrl = process.env.ALCHEMY_HTTP_URL;
+  // Prefer explicit Alchemy HTTP client for logs; fallback to server client
+  const logsClient = alchemyHttpUrl
+    ? createPublicClient({ chain: base, transport: http(alchemyHttpUrl) })
+    : serverPublicClient;
+  // If not on Alchemy, many public RPCs restrict getLogs to ~500 blocks
+  const isAlchemy = !!alchemyHttpUrl && /alchemy\.com/.test(alchemyHttpUrl);
+  const batchSize = Number(process.env.HOLDERCOUNT_BATCH_SIZE || (isAlchemy ? 5000 : 500));
+  const rangeBlocks = Number(process.env.HOLDERCOUNT_BLOCK_RANGE || (isAlchemy ? 10000 : 2000));
   try {
-    // This requires Alchemy Growth plan or custom indexing
-    // For now, return a placeholder for known tokens
-    const knownHolders: Record<string, number> = {
-      '0x4200000000000000000000000000000000000006': 150000, // WETH
-      '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913': 200000, // USDC
-      '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA': 50000, // USDbC
-      '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb': 30000, // DAI
-      '0x940181a94A35A4569E4529A3CDfB74e38FD98631': 15000, // AERO
-      '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22': 25000, // cbETH
-      '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452': 20000, // wstETH
-    };
-    
-    return knownHolders[tokenAddress.toLowerCase()] || 1000; // Default placeholder
+    // Check cache first
+    const cached = await getCachedHolderCount(addr);
+    if (cached !== null) return cached;
+
+    // Avoid repeated heavy scans on recent failures
+    if (await wasHolderCountRecentlyFailed(addr)) {
+      console.log(`[holders][skip-fail] ${addr}`);
+      return 0;
+    }
+
+    const latestBlock = await withRetry(() => logsClient.getBlockNumber());
+    const startBlock = latestBlock - BigInt(Math.max(rangeBlocks, batchSize)) + BigInt(1);
+    const zero = '0x0000000000000000000000000000000000000000';
+    const unique = new Set<string>();
+
+    const startTime = Date.now();
+    for (let from = startBlock; from <= latestBlock; from += BigInt(batchSize)) {
+      const to = from + BigInt(batchSize - 1) > latestBlock ? latestBlock : from + BigInt(batchSize - 1);
+      const logs = await withTimeout(
+        withRetry(() => logsClient.getLogs({
+          address: addr as `0x${string}`,
+          event: {
+            type: 'event',
+            name: 'Transfer',
+            inputs: [
+              { indexed: true, name: 'from', type: 'address' },
+              { indexed: true, name: 'to', type: 'address' },
+              { indexed: false, name: 'value', type: 'uint256' },
+            ],
+          } as any,
+          fromBlock: from,
+          toBlock: to,
+        })),
+        15000,
+        'holders getLogs batch'
+      );
+
+      for (const log of logs) {
+        const args = (log as any).args as any;
+        const fromAddr = String(args?.from).toLowerCase();
+        const toAddr = String(args?.to).toLowerCase();
+        if (fromAddr && fromAddr !== zero) unique.add(fromAddr);
+        if (toAddr && toAddr !== zero) unique.add(toAddr);
+      }
+
+      // Serverless guard
+      if (Date.now() - startTime > 45000) {
+        console.log(`[holders][timeout-guard] stopping early for ${addr}`);
+        break;
+      }
+    }
+
+    const count = unique.size;
+    await saveHolderCount(addr, count, ttl);
+    console.log(`[holders][estimate] ${addr} -> ${count} (latency=${Date.now() - startTime}ms)`);
+    return count;
   } catch (error) {
-    console.error('Error fetching holder count:', error);
+    console.error(`[holders][error] ${addr}:`, error);
+    await markHolderCountFailed(addr, 300);
     return 0;
   }
 }
@@ -101,7 +160,7 @@ export async function getTokenHolderCount(tokenAddress: string): Promise<number>
  */
 export async function getTokenTotalSupply(tokenAddress: string): Promise<string> {
   try {
-    const totalSupply = await publicClient.readContract({
+    const totalSupply = await (serverPublicClient as any).readContract({
       address: tokenAddress as `0x${string}`,
       abi: ERC20_ABI,
       functionName: 'totalSupply',
@@ -136,7 +195,7 @@ export async function getTokenMetadata(_tokenAddress: string) {
  */
 export async function isContract(address: string): Promise<boolean> {
   try {
-    const code = await publicClient.getBytecode({
+    const code = await (serverPublicClient as any).getBytecode({
       address: address as `0x${string}`,
     });
     return code !== undefined && code !== '0x';

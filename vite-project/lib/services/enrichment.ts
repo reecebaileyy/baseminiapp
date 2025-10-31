@@ -1,6 +1,8 @@
 import { queryUniswapV3, queryAerodrome } from './graphql-client.js';
-import { getAllTokens, saveEnrichedToken } from '../db/kv.js';
+import { saveEnrichedToken } from '../db/kv.js';
 import type { DiscoveredToken, EnrichedToken } from '../types/index.js';
+import { withRetry } from '../utils/retry.js';
+import { getTokenHolderCount } from './token.js';
 
 /**
  * Token Enrichment Service
@@ -26,17 +28,7 @@ interface SubgraphTokenData {
   derivedETH: string;
 }
 
-interface SubgraphPoolData {
-  id: string;
-  token0: { id: string; symbol: string };
-  token1: { id: string; symbol: string };
-  feeTier: number;
-  volumeUSD: string;
-  totalValueLockedUSD: string;
-  token0Price: string;
-  token1Price: string;
-  liquidityProviderCount: number;
-}
+// (pool-level structure not used here)
 
 /**
  * Query token data from Uniswap v3 subgraph
@@ -65,7 +57,7 @@ async function queryUniswapTokenData(tokenAddress: string): Promise<SubgraphToke
       }
     `;
 
-    const result = await queryUniswapV3<{ token: SubgraphTokenData }>(query, { id: tokenAddress.toLowerCase() });
+    const result = await withRetry(() => queryUniswapV3<{ token: SubgraphTokenData }>(query, { id: tokenAddress.toLowerCase() }));
     return result?.token || null;
   } catch (error) {
     console.error(`Error querying Uniswap token data for ${tokenAddress}:`, error);
@@ -100,7 +92,7 @@ async function queryAerodromeTokenData(tokenAddress: string): Promise<SubgraphTo
       }
     `;
 
-    const result = await queryAerodrome<{ token: SubgraphTokenData }>(query, { id: tokenAddress.toLowerCase() });
+    const result = await withRetry(() => queryAerodrome<{ token: SubgraphTokenData }>(query, { id: tokenAddress.toLowerCase() }));
     return result?.token || null;
   } catch (error) {
     console.error(`Error querying Aerodrome token data for ${tokenAddress}:`, error);
@@ -123,7 +115,7 @@ async function getTokenPriceUSD(tokenAddress: string): Promise<number | null> {
       }
     `;
 
-    const bundleResult = await queryUniswapV3<{ bundles: Array<{ id: string; ethPriceUSD: string }> }>(bundleQuery);
+    const bundleResult = await withRetry(() => queryUniswapV3<{ bundles: Array<{ id: string; ethPriceUSD: string }> }>(bundleQuery));
     const ethPriceUSD = bundleResult?.bundles?.[0]?.ethPriceUSD;
 
     // Query token derivedETH value
@@ -135,7 +127,7 @@ async function getTokenPriceUSD(tokenAddress: string): Promise<number | null> {
       }
     `;
 
-    const tokenResult = await queryUniswapV3<{ token: { derivedETH: string } }>(tokenQuery, { id: tokenAddress.toLowerCase() });
+    const tokenResult = await withRetry(() => queryUniswapV3<{ token: { derivedETH: string } }>(tokenQuery, { id: tokenAddress.toLowerCase() }));
     const derivedETH = tokenResult?.token?.derivedETH;
 
     if (ethPriceUSD && derivedETH) {
@@ -166,30 +158,30 @@ export async function enrichTokenWithSubgraphData(
     ]);
 
     // Determine source DEX and use best data
-    let sourceDEX: 'uniswap-v3' | 'aerodrome' | 'both' | null = null;
+    let sourceDEX: 'uniswap' | 'aerodrome' | 'both' | null = null;
     let volume24h = 0;
     let tvlUSD = 0;
     let poolCount = 0;
-    let holderCount = 0;
+    let holderCount: number | null = null;
 
     if (uniData && aeroData) {
       sourceDEX = 'both';
       volume24h = parseFloat(uniData.volumeUSD) + parseFloat(aeroData.volumeUSD);
       tvlUSD = parseFloat(uniData.totalValueLockedUSD) + parseFloat(aeroData.totalValueLockedUSD);
       poolCount = uniData.poolCount + aeroData.poolCount;
-      holderCount = uniData.txCount + aeroData.txCount; // Approximate holder count from tx
+      // Do not approximate holders from txCount; prefer explicit holder count source if available
     } else if (uniData) {
-      sourceDEX = 'uniswap-v3';
+      sourceDEX = 'uniswap';
       volume24h = parseFloat(uniData.volumeUSD);
       tvlUSD = parseFloat(uniData.totalValueLockedUSD);
       poolCount = uniData.poolCount;
-      holderCount = uniData.txCount;
+      // Do not approximate holders from txCount
     } else if (aeroData) {
       sourceDEX = 'aerodrome';
       volume24h = parseFloat(aeroData.volumeUSD);
       tvlUSD = parseFloat(aeroData.totalValueLockedUSD);
       poolCount = aeroData.poolCount;
-      holderCount = aeroData.txCount;
+      // Do not approximate holders from txCount
     }
 
     // Calculate market cap
@@ -199,6 +191,11 @@ export async function enrichTokenWithSubgraphData(
 
     // Smart fallbacks for unlisted tokens
     const isListed = sourceDEX !== null;
+    // Try to fetch holder count using helper (may return placeholder for known tokens)
+    try {
+      holderCount = await withRetry(() => getTokenHolderCount(address));
+    } catch {}
+
     const enriched: Partial<EnrichedToken> = {
       priceUSD: isListed ? ethPrice : null,
       volume24h: isListed ? volume24h : 0,
@@ -207,11 +204,12 @@ export async function enrichTokenWithSubgraphData(
       isListed,
       sourceDEX,
       poolCount,
-      holderCount,
+      holderCount: holderCount ?? 0,
     };
 
-    // Cache the enriched data
-    await saveEnrichedToken(address, enriched, 60);
+    // Cache the enriched data (5–15 min TTL; configurable)
+    const ttl = Number(process.env.ENRICH_TTL_SECS || (import.meta as any).env?.ENRICH_TTL_SECS || 900);
+    await saveEnrichedToken(address, enriched, ttl);
 
     return enriched;
   } catch (error) {

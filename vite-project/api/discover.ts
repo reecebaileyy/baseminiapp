@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { discoverNewTokens, discoverNewTokensIncremental } from '../lib/services/discovery.js';
-import { getDiscoveryProgress } from '../lib/db/kv.js';
+import { getDiscoveryProgress, getDiscoveryState } from '../lib/db/kv.js';
 
 /**
  * POST /api/discover
@@ -38,14 +38,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       newTokensCount = await discoverNewTokens(Number(blocksToScan));
     }
 
-    // Get updated progress
+    // Get updated progress and state
     const progress = await getDiscoveryProgress();
+    const state = await getDiscoveryState();
 
     return res.status(200).json({
       success: true,
       message: `Discovery complete`,
       newTokensFound: newTokensCount,
       progress: progress,
+      state,
     });
   } catch (error) {
     console.error('Error in /api/discover:', error);

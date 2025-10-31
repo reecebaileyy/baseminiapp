@@ -24,6 +24,9 @@
     "api/tokens/[address].ts": {
       "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/refresh", "schedule": "0 * * * *" }
+  ]
 }
 

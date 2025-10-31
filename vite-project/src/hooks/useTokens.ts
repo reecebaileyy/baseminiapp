@@ -1,70 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
-import { tokensApi } from 'lib/api/tokens';
 
 /**
  * Fetch trending tokens
  */
-export function useTrendingTokens(limit?: number) {
-  return useQuery({
-    queryKey: ['tokens', 'trending', limit],
-    queryFn: () => tokensApi.getTrending(limit),
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 60000,
-  });
-}
+// Note: Client-safe hooks only. Avoid importing server-side modules here.
 
 /**
  * Fetch token details
  */
-export function useTokenDetails(tokenAddress: string | undefined) {
-  return useQuery({
-    queryKey: ['token', tokenAddress],
-    queryFn: () => tokensApi.getDetails(tokenAddress!),
-    enabled: !!tokenAddress,
-    staleTime: 10000,
-  });
-}
+// Deprecated: Use hooks in useDiscoveredTokens.ts for token lists/details
 
 /**
  * Fetch token info
  */
-export function useTokenInfo(tokenAddress: string | undefined) {
-  return useQuery({
-    queryKey: ['token', 'info', tokenAddress],
-    queryFn: () => tokensApi.getInfo(tokenAddress!),
-    enabled: !!tokenAddress,
-    staleTime: 300000,
-  });
-}
+// Removed server-dependent hooks
 
 /**
  * Fetch token balance for a wallet
  */
-export function useTokenBalance(tokenAddress: string | undefined, walletAddress: string | undefined) {
-  return useQuery({
-    queryKey: ['token', 'balance', tokenAddress, walletAddress],
-    queryFn: () => tokensApi.getBalance(tokenAddress!, walletAddress!),
-    enabled: !!tokenAddress && !!walletAddress,
-    staleTime: 5000, 
-    refetchInterval: 10000,
-  });
-}
+// Removed
 
 /**
  * Fetch multiple token balances
  */
-export function useTokenBalances(
-  walletAddress: string | undefined,
-  tokenAddresses: string[]
-) {
-  return useQuery({
-    queryKey: ['tokens', 'balances', walletAddress, tokenAddresses],
-    queryFn: () => tokensApi.getBalances(walletAddress!, tokenAddresses),
-    enabled: !!walletAddress && tokenAddresses.length > 0,
-    staleTime: 5000,
-    refetchInterval: 10000,
-  });
-}
+// Removed
 
 /**
  * Check if token is a honeypot
@@ -72,21 +31,34 @@ export function useTokenBalances(
 export function useHoneypotCheck(tokenAddress: string | undefined) {
   return useQuery({
     queryKey: ['token', 'honeypot', tokenAddress],
-    queryFn: () => tokensApi.checkHoneypot(tokenAddress!),
     enabled: !!tokenAddress,
-    staleTime: 3600000, 
+    staleTime: 3600000,
+    queryFn: async () => {
+      if (!tokenAddress) throw new Error('Address required');
+      const res = await fetch(`/api/tokens/${tokenAddress}`);
+      if (!res.ok) throw new Error('Failed to fetch token');
+      const json = await res.json();
+      const token = json?.data as {
+        holderCount?: number;
+        isListed?: boolean;
+        poolCount?: number;
+      } | undefined;
+
+      const reasons: string[] = [];
+      const holders = typeof token?.holderCount === 'number' ? token?.holderCount : 0;
+      const isListed = !!token?.isListed;
+      const pools = typeof token?.poolCount === 'number' ? token?.poolCount : 0;
+
+      if (holders < 10) reasons.push('Very few holders');
+      if (!isListed || pools === 0) reasons.push('No liquidity pools found');
+
+      return { isHoneypot: reasons.length > 1, reasons } as { isHoneypot: boolean; reasons: string[] };
+    },
   });
 }
 
 /**
  * Get token holder count
  */
-export function useTokenHolderCount(tokenAddress: string | undefined) {
-  return useQuery({
-    queryKey: ['token', 'holders', tokenAddress],
-    queryFn: () => tokensApi.getHolderCount(tokenAddress!),
-    enabled: !!tokenAddress,
-    staleTime: 30000,
-  });
-}
+// Removed
 

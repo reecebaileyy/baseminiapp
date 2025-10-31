@@ -28,7 +28,7 @@ export interface LiquidityPool {
   fee: number;
   liquidity: string;
   volume24h: number;
-  dex: 'uniswap-v3' | 'aerodrome';
+  dex: 'uniswap-v2' | 'uniswap-v3' | 'uniswap-v4' | 'uniswap' | 'aerodrome';
   createdAt: number;
 }
 
@@ -48,7 +48,7 @@ export interface SwapQuote {
   priceImpact: number;
   route: string[];
   gasEstimate: string;
-  dex: 'uniswap-v3' | 'aerodrome';
+  dex: 'uniswap-v2' | 'uniswap-v3' | 'uniswap-v4' | 'uniswap' | 'aerodrome';
 }
 
 export interface SwapParams {
@@ -109,7 +109,7 @@ export interface DiscoveredToken {
   deployer: string;
   createdAtBlock: number;
   createdAtTimestamp: number;
-  discoveredFrom: 'uniswap-v3' | 'aerodrome';
+  discoveredFrom: 'uniswap-v2' | 'uniswap-v3' | 'uniswap-v4' | 'uniswap' | 'aerodrome';
   lastUpdated: number;
 }
 
@@ -119,9 +119,10 @@ export interface EnrichedToken extends DiscoveredToken {
   tvlUSD: number;
   marketCap: number | null;
   isListed: boolean;
-  sourceDEX: 'uniswap-v3' | 'aerodrome' | 'both' | null;
+  sourceDEX: 'uniswap-v2' | 'uniswap-v3' | 'uniswap-v4' | 'uniswap' | 'aerodrome' | 'both' | null;
   poolCount: number;
   holderCount: number;
+  cachedAt?: number;
 }
 
 export interface TokenDiscoveryProgress {

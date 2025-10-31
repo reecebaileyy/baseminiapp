@@ -9,12 +9,17 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       'lib': path.resolve(__dirname, './lib'),
-      // Alias MetaMask SDK to a local shim to avoid optional dependency resolution in browser
-      '@metamask/sdk': path.resolve(__dirname, './src/shims/metamask-sdk.ts'),
     },
   },
-  optimizeDeps: {
-    // Skip pre-bundling MetaMask SDK to prevent esbuild resolution errors
-    exclude: ['@metamask/sdk'],
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })

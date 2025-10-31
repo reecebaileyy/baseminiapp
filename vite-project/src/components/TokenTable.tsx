@@ -5,6 +5,8 @@ import { useTokenFormatter } from '../hooks/useTokenFormatter';
 import { getTokenLogoUrl } from 'lib/utils/tokenLogos';
 import type { TokenQueryParams } from 'lib/types';
 import styles from './TokenTable.module.css';
+import { RefreshTokenButton } from './RefreshTokenButton';
+import { useBulkRefresh } from '../hooks/useBulkRefresh';
 
 interface TokenTableProps {
   filter?: 'all' | 'listed' | 'unlisted';
@@ -16,8 +18,9 @@ type SortField = TokenQueryParams['sort'];
 export function TokenTable({ filter = 'all', limit = 100 }: TokenTableProps) {
   const [sortField, setSortField] = useState<SortField>('volume');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  const [copied, setCopied] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useDiscoveredTokens({
+  const { data, isLoading, error, refetch } = useDiscoveredTokens({
     sort: sortField,
     order,
     limit,
@@ -47,6 +50,27 @@ export function TokenTable({ filter = 'all', limit = 100 }: TokenTableProps) {
   }
 
   const tokens: TokenRow[] = data?.data || [];
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { refreshMany, isRefreshing: isBulkRefreshing } = useBulkRefresh();
+
+  const toggle = (addr: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(addr)) next.delete(addr); else next.add(addr);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelected(new Set(tokens.map(t => t.address)));
+  };
+  const clearAll = () => setSelected(new Set());
+  const refreshSelected = async () => {
+    if (selected.size === 0) return;
+    await refreshMany(Array.from(selected));
+    clearAll();
+    refetch();
+  };
   const isLoadingState = isLoading;
 
   const handleSort = (field: SortField) => {
@@ -90,7 +114,21 @@ export function TokenTable({ filter = 'all', limit = 100 }: TokenTableProps) {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>#</th>
+              <th>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" onChange={(e) => e.target.checked ? selectAll() : clearAll()} />
+                  {(selected.size > 0) && (
+                    <button
+                      className={styles.copyButton}
+                      onClick={refreshSelected}
+                      disabled={isBulkRefreshing}
+                      title="Refresh selected tokens"
+                    >
+                      {isBulkRefreshing ? 'Refreshing…' : `Refresh Selected (${selected.size})`}
+                    </button>
+                  )}
+                </div>
+              </th>
               <th>Token</th>
               <th onClick={() => handleSort('volume')} className={styles.sortable}>
                 Volume 24h {sortField === 'volume' && (order === 'asc' ? '↑' : '↓')}
@@ -111,34 +149,60 @@ export function TokenTable({ filter = 'all', limit = 100 }: TokenTableProps) {
             </tr>
           </thead>
           <tbody>
-            {tokens.map((token, index) => (
+            {tokens.map((token) => (
               <tr key={token.address}>
-                <td>{index + 1}</td>
                 <td>
-                  <Link to={`/tokens/${token.address}`} className={styles.tokenLink}>
-                    <div className={styles.tokenInfo}>
-                      <div className={styles.tokenIcon}>
-                        <img 
-                          src={getTokenLogoUrl(token.address, token.chainId)} 
-                          alt={token.symbol} 
-                          width={32} 
-                          height={32}
-                          onError={(e) => {
-                            // Fallback to placeholder on error
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const placeholder = target.nextElementSibling as HTMLElement;
-                            if (placeholder) placeholder.style.display = 'flex';
-                          }}
-                        />
-                        <div className={styles.placeholder} style={{ display: 'none' }}>{token.symbol[0]}</div>
+                  <input type="checkbox" checked={selected.has(token.address)} onChange={() => toggle(token.address)} />
+                </td>
+                <td>
+                  <div>
+                    <Link to={`/tokens/${token.address}`} className={styles.tokenLink}>
+                      <div className={styles.tokenInfo}>
+                        <div className={styles.tokenIcon}>
+                          <img 
+                            src={getTokenLogoUrl(token.address, token.chainId)} 
+                            alt={token.symbol} 
+                            width={32} 
+                            height={32}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const placeholder = target.nextElementSibling as HTMLElement;
+                              if (placeholder) placeholder.style.display = 'flex';
+                            }}
+                          />
+                          <div className={styles.placeholder} style={{ display: 'none' }}>{token.symbol[0]}</div>
+                        </div>
+                        <div>
+                          <div className={styles.tokenName}>{token.name}</div>
+                          <div className={styles.tokenSymbol}>{token.symbol}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className={styles.tokenName}>{token.name}</div>
-                        <div className={styles.tokenSymbol}>{token.symbol}</div>
+                    </Link>
+                    <div className={styles.addressRow}>
+                      <code style={{ opacity: 0.7, fontSize: '12px' }}>{token.address.slice(0, 6)}...{token.address.slice(-4)}</code>
+                      <button
+                        className={styles.copyButton}
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          try {
+                            await navigator.clipboard.writeText(token.address);
+                            setCopied(token.address);
+                            setTimeout(() => {
+                              setCopied((curr) => (curr === token.address ? null : curr));
+                            }, 1200);
+                          } catch {}
+                        }}
+                        title="Copy contract address"
+                      >
+                        {copied === token.address ? 'Copied' : 'Copy'}
+                      </button>
+                      <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                        <RefreshTokenButton address={token.address} label="Refresh" />
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 </td>
                 <td title="24h trading volume from DEXs">{token.volume24h > 0 ? formatCurrency(token.volume24h) : 'N/A'}</td>
                 <td title="Total Value Locked (TVL) in USD">{token.liquidity > 0 ? formatCurrency(token.liquidity) : 'N/A'}</td>

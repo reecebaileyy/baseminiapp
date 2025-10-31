@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getTrendingTokens, saveTrendingTokens, getAllTokens } from '../../lib/db/kv.js';
 import { enrichMultipleTokens } from '../../lib/services/enrichment.js';
-import type { EnrichedToken } from '../../lib/types/index.js';
 
 /**
  * GET /api/tokens/trending

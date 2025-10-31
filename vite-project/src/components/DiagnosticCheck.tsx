@@ -4,8 +4,20 @@ import { useAccount } from 'wagmi';
 export function DiagnosticCheck() {
   const { address, isConnected, chain } = useAccount();
   const [hasAuthError, setHasAuthError] = useState(false);
+  const [hasEthereumProvider, setHasEthereumProvider] = useState<boolean>(false);
+  const [isMetaMask, setIsMetaMask] = useState<boolean>(false);
 
   useEffect(() => {
+    // Detect ethereum provider and MetaMask
+    try {
+      const eth: any = (typeof window !== 'undefined' && (window as any).ethereum) ? (window as any).ethereum : undefined;
+      setHasEthereumProvider(!!eth);
+      setIsMetaMask(!!eth?.isMetaMask);
+    } catch (_) {
+      setHasEthereumProvider(false);
+      setIsMetaMask(false);
+    }
+
     // Listen for console errors to detect 401
     const originalError = console.error;
     console.error = (...args) => {
@@ -52,6 +64,8 @@ export function DiagnosticCheck() {
       <div style={{ marginBottom: '10px' }}>
         <strong>Wallet Status:</strong>
         <ul style={{ marginLeft: '20px' }}>
+          <li>Ethereum Provider: {hasEthereumProvider ? '✅ Detected' : '❌ Not found'}</li>
+          <li>MetaMask: {isMetaMask ? '✅ Detected' : '❌ Not detected'}</li>
           <li>Connected: {isConnected ? '✅ Yes' : '❌ No'}</li>
           <li>Address: {address ? `✅ ${address.substring(0, 6)}...${address.substring(38)}` : '❌ Not connected'}</li>
           <li>Chain: {chain ? `${chain.name} (${chain.id})` : '❌ Unknown'}</li>

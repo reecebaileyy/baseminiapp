@@ -32,3 +32,4 @@ Thumbs.db
 
 /src/generated/prisma
 /scripts
+.env*.local

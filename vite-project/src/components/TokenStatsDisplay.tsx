@@ -1,5 +1,6 @@
 import { useTokenStats } from '../hooks/useGraphToken';
 import styles from './TokenStatsDisplay.module.css';
+import { RefreshTokenButton } from './RefreshTokenButton';
 
 interface TokenStatsDisplayProps {
   tokenAddress: string;
@@ -234,8 +235,11 @@ export function TokenStatsDisplay({ tokenAddress }: TokenStatsDisplayProps) {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2>{token.symbol} Statistics</h2>
-        <p className={styles.tokenName}>{token.name}</p>
+        <div>
+          <h2>{token.symbol} Statistics</h2>
+          <p className={styles.tokenName}>{token.name}</p>
+        </div>
+        <RefreshTokenButton address={tokenAddress} />
       </div>
 
       <div className={styles.statsGrid}>
@@ -292,14 +296,7 @@ export function TokenStatsDisplay({ tokenAddress }: TokenStatsDisplayProps) {
           <div className={styles.statSubtext}>USD</div>
         </div>
 
-        {/* Transactions */}
-        <div className={styles.statCard}>
-          <div className={styles.statLabel}>Total Transactions</div>
-          <div className={styles.statValue}>
-            {formatNumber(parseValue(token.txCount))}
-          </div>
-          <div className={styles.statSubtext}>count</div>
-        </div>
+        {/* Transactions removed per requirement */}
 
         {/* Pool Count */}
         <div className={styles.statCard}>

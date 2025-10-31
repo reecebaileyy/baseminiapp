@@ -2,6 +2,36 @@
 
 ## Quick Start with Vercel + Upstash KV
 
+### Alchemy RPC Environment Variables
+
+Add these variables (server and client) to your environment. For local development, set them in a `.env.local` file at the project root. In Vercel, add them in Project Settings → Environment Variables.
+
+Server (used by Vercel Functions):
+
+```
+ALCHEMY_HTTP_URL=https://base-mainnet.g.alchemy.com/v2/<your-http-key>
+ALCHEMY_WS_URL=wss://base-mainnet.g.alchemy.com/v2/<your-ws-key>
+```
+
+Client (Vite):
+
+```
+VITE_ALCHEMY_HTTP_URL=https://base-mainnet.g.alchemy.com/v2/<your-http-key>
+VITE_ALCHEMY_WS_URL=wss://base-mainnet.g.alchemy.com/v2/<your-ws-key>
+VITE_USE_WEBSOCKET=false
+```
+
+Optional tuning:
+
+```
+DISCOVERY_BATCH_SIZE=1000
+DISCOVERY_BATCH_TIMEOUT_MS=15000
+DISCOVERY_SLEEP_MS=400
+ENRICH_TTL_SECS=900
+REFRESH_LIMIT=50
+CRON_SECRET=<set-a-strong-secret>
+```
+
 ### 1. Create KV Database via Upstash
 
 1. Go to your Vercel dashboard for your project
