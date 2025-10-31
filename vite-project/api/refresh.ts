@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getTrendingTokens, getAllTokens } from '../lib/db/kv.js';
 import { enrichTokenWithSubgraphData } from '../lib/services/enrichment.js';
 import { kv } from '@vercel/kv';
+import { verifyRequestAuth } from '../lib/utils/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -9,9 +10,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const secret = process.env.CRON_SECRET;
-    if (secret && req.headers['x-cron-secret'] !== secret) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (!verifyRequestAuth(req, res)) return;
+    if (req.headers['user-agent']?.includes('Vercel-Cron')) {
+      console.log('[CRON] Triggered via Vercel Scheduler');
     }
 
     const limit = Number(process.env.REFRESH_LIMIT || req.query.limit || 50);

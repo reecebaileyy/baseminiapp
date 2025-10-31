@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { discoverNewTokens, discoverNewTokensIncremental } from '../lib/services/discovery.js';
 import { getDiscoveryProgress, getDiscoveryState } from '../lib/db/kv.js';
+import { verifyRequestAuth } from '../lib/utils/auth.js';
 
 /**
  * POST /api/discover
@@ -20,10 +21,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log('Starting discovery process...');
 
-    // Optional API key check (can be enabled if needed)
-    const apiKey = process.env.DISCOVERY_API_KEY;
-    if (apiKey && req.headers['x-api-key'] !== apiKey) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    // Unified auth (CRON_SECRET or Vercel Cron UA)
+    if (!verifyRequestAuth(req, res)) return;
+    if (req.headers['user-agent']?.includes('Vercel-Cron')) {
+      console.log('[CRON] Triggered via Vercel Scheduler');
     }
 
     const { incremental = true, blocksToScan = 100000 } = req.body || {};
